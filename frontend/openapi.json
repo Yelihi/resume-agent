@@ -1,0 +1,1795 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Resume Agent API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/resumes/validation-policy": {
+      "get": {
+        "summary": "Validation Policy",
+        "operationId": "validation_policy_api_resumes_validation_policy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeValidationPolicy"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/resumes/extract/pdf": {
+      "post": {
+        "summary": "Pdf",
+        "operationId": "pdf_api_resumes_extract_pdf_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_pdf_api_resumes_extract_pdf_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractPageDocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/resumes/extract/image": {
+      "post": {
+        "summary": "Image",
+        "operationId": "image_api_resumes_extract_image_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_image_api_resumes_extract_image_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractPageDocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/resumes/extract/docx": {
+      "post": {
+        "summary": "Docx",
+        "operationId": "docx_api_resumes_extract_docx_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_docx_api_resumes_extract_docx_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractFlowDocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/resumes/extract/txt": {
+      "post": {
+        "summary": "Txt",
+        "operationId": "txt_api_resumes_extract_txt_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_txt_api_resumes_extract_txt_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractFlowDocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/resumes/extract/text": {
+      "post": {
+        "summary": "Text",
+        "operationId": "text_api_resumes_extract_text_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractFlowDocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/page": {
+      "post": {
+        "summary": "Start Page",
+        "operationId": "start_page_api_reviews_page_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/flow": {
+      "post": {
+        "summary": "Start Flow",
+        "operationId": "start_flow_api_reviews_flow_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlowReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/{run_id}/result": {
+      "get": {
+        "summary": "Result",
+        "operationId": "result_api_reviews__run_id__result_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/{run_id}/events": {
+      "get": {
+        "summary": "Events",
+        "operationId": "events_api_reviews__run_id__events_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/{run_id}/cancel": {
+      "post": {
+        "summary": "Cancel",
+        "operationId": "cancel_api_reviews__run_id__cancel_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/{run_id}/retry": {
+      "post": {
+        "summary": "Retry",
+        "operationId": "retry_api_reviews__run_id__retry_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/{run_id}/record": {
+      "get": {
+        "summary": "Record",
+        "operationId": "record_api_reviews__run_id__record_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/retry": {
+      "post": {
+        "summary": "Retry Stored",
+        "operationId": "retry_stored_api_reviews_retry_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoredRetryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reviews/{run_id}": {
+      "delete": {
+        "summary": "Release",
+        "operationId": "release_api_reviews__run_id__delete",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AiReviewOutput": {
+        "properties": {
+          "materialReviews": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialReviewDTO"
+            },
+            "type": "array",
+            "title": "Materialreviews"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionDTO"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "materialReviews",
+          "results"
+        ],
+        "title": "AiReviewOutput"
+      },
+      "Body_docx_api_resumes_extract_docx_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_docx_api_resumes_extract_docx_post"
+      },
+      "Body_image_api_resumes_extract_image_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_image_api_resumes_extract_image_post"
+      },
+      "Body_pdf_api_resumes_extract_pdf_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_pdf_api_resumes_extract_pdf_post"
+      },
+      "Body_txt_api_resumes_extract_txt_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_txt_api_resumes_extract_txt_post"
+      },
+      "CancelAccepted": {
+        "properties": {
+          "runId": {
+            "type": "string",
+            "title": "Runid"
+          },
+          "cancelRequested": {
+            "type": "boolean",
+            "title": "Cancelrequested"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "runId",
+          "cancelRequested"
+        ],
+        "title": "CancelAccepted"
+      },
+      "CompletedModules": {
+        "properties": {
+          "spellCheck": {
+            "$ref": "#/components/schemas/ModuleResult_list_SpellDiagnostic__"
+          },
+          "companyContextAnalysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModuleResult_ContextAnalysis_"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "jobPostingAnalysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModuleResult_ContextAnalysis_"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finalReview": {
+            "$ref": "#/components/schemas/ModuleResult_AiReviewOutput_"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "spellCheck",
+          "finalReview"
+        ],
+        "title": "CompletedModules"
+      },
+      "ContextAnalysis": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Summary"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ContextEvidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "summary",
+          "evidence"
+        ],
+        "title": "ContextAnalysis"
+      },
+      "ContextEvidence": {
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "title": "Sourceid"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Statement"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sourceId",
+          "statement"
+        ],
+        "title": "ContextEvidence"
+      },
+      "DirectTextRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "DirectTextRequest"
+      },
+      "DocumentPage": {
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Pagenumber"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/PageBlock"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Blocks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pageNumber",
+          "blocks"
+        ],
+        "title": "DocumentPage"
+      },
+      "ExtractFlowDocumentResponse": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/FlowDocument"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleErrorDTO"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document",
+          "errors"
+        ],
+        "title": "ExtractFlowDocumentResponse"
+      },
+      "ExtractPageDocumentResponse": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/PageDocument"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleErrorDTO"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document",
+          "errors"
+        ],
+        "title": "ExtractPageDocumentResponse"
+      },
+      "FileSizeLimits": {
+        "properties": {
+          "pdf": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Pdf"
+          },
+          "image": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Image"
+          },
+          "docx": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Docx"
+          },
+          "txt": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Txt"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pdf",
+          "image",
+          "docx",
+          "txt"
+        ],
+        "title": "FileSizeLimits"
+      },
+      "FlowBlock": {
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "pattern": "^f-b[1-9]\\d*$",
+            "title": "Blockid"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/FlowLine"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "blockId",
+          "lines"
+        ],
+        "title": "FlowBlock"
+      },
+      "FlowDocument": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/FlowBlock"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Blocks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "blocks"
+        ],
+        "title": "FlowDocument"
+      },
+      "FlowLine": {
+        "properties": {
+          "lineId": {
+            "type": "string",
+            "pattern": "^f-l[1-9]\\d*$",
+            "title": "Lineid"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "startOffset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Startoffset"
+          },
+          "endOffset": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Endoffset"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lineId",
+          "text",
+          "startOffset",
+          "endOffset"
+        ],
+        "title": "FlowLine"
+      },
+      "FlowReviewRequest": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/FlowDocument"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceMaterial"
+            },
+            "type": "array",
+            "title": "Materials"
+          },
+          "previousReview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreviousReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document"
+        ],
+        "title": "FlowReviewRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "MaterialEvidence": {
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Sourceid"
+          },
+          "consideredPoint": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Consideredpoint"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sourceId",
+          "consideredPoint"
+        ],
+        "title": "MaterialEvidence"
+      },
+      "MaterialReviewDTO": {
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Sourceid"
+          },
+          "materialType": {
+            "$ref": "#/components/schemas/MaterialType"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "notApplied"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sourceId",
+          "materialType",
+          "status",
+          "reason"
+        ],
+        "title": "MaterialReviewDTO"
+      },
+      "MaterialType": {
+        "type": "string",
+        "enum": [
+          "company",
+          "jobPosting"
+        ],
+        "title": "MaterialType"
+      },
+      "ModuleErrorDTO": {
+        "properties": {
+          "moduleKey": {
+            "type": "string",
+            "title": "Modulekey"
+          },
+          "inputSourceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inputsourceid"
+          },
+          "errorCode": {
+            "type": "string",
+            "title": "Errorcode"
+          },
+          "userMessage": {
+            "type": "string",
+            "title": "Usermessage"
+          },
+          "canRetry": {
+            "type": "boolean",
+            "title": "Canretry"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "moduleKey",
+          "inputSourceId",
+          "errorCode",
+          "userMessage",
+          "canRetry"
+        ],
+        "title": "ModuleErrorDTO"
+      },
+      "ModuleResult_AiReviewOutput_": {
+        "properties": {
+          "moduleKey": {
+            "type": "string",
+            "title": "Modulekey"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiReviewOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleErrorDTO"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "moduleKey",
+          "output",
+          "errors"
+        ],
+        "title": "ModuleResult[AiReviewOutput]"
+      },
+      "ModuleResult_ContextAnalysis_": {
+        "properties": {
+          "moduleKey": {
+            "type": "string",
+            "title": "Modulekey"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextAnalysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleErrorDTO"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "moduleKey",
+          "output",
+          "errors"
+        ],
+        "title": "ModuleResult[ContextAnalysis]"
+      },
+      "ModuleResult_list_SpellDiagnostic__": {
+        "properties": {
+          "moduleKey": {
+            "type": "string",
+            "title": "Modulekey"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SpellDiagnostic"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleErrorDTO"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "moduleKey",
+          "output",
+          "errors"
+        ],
+        "title": "ModuleResult[list[SpellDiagnostic]]"
+      },
+      "NormalizedBBox": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "exclusiveMaximum": 1.0,
+            "minimum": 0.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "exclusiveMaximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y"
+          },
+          "width": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "title": "NormalizedBBox"
+      },
+      "PageBlock": {
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "pattern": "^p[1-9]\\d*-b[1-9]\\d*$",
+            "title": "Blockid"
+          },
+          "bbox": {
+            "$ref": "#/components/schemas/NormalizedBBox"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/PageLine"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "blockId",
+          "bbox",
+          "lines"
+        ],
+        "title": "PageBlock"
+      },
+      "PageDocument": {
+        "properties": {
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentPage"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Pages"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pages"
+        ],
+        "title": "PageDocument"
+      },
+      "PageLine": {
+        "properties": {
+          "lineId": {
+            "type": "string",
+            "pattern": "^p[1-9]\\d*-l[1-9]\\d*$",
+            "title": "Lineid"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "bbox": {
+            "$ref": "#/components/schemas/NormalizedBBox"
+          },
+          "textSource": {
+            "type": "string",
+            "enum": [
+              "embedded",
+              "ocr"
+            ],
+            "title": "Textsource"
+          },
+          "uncertainWords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Uncertainwords"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lineId",
+          "text",
+          "bbox",
+          "textSource",
+          "uncertainWords"
+        ],
+        "title": "PageLine"
+      },
+      "PageReviewRequest": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/PageDocument"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceMaterial"
+            },
+            "type": "array",
+            "title": "Materials"
+          },
+          "previousReview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreviousReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document"
+        ],
+        "title": "PageReviewRequest"
+      },
+      "PreviousReview": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionDTO"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "userFeedback": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userfeedback"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "title": "PreviousReview"
+      },
+      "ReferenceMaterial": {
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Sourceid"
+          },
+          "materialType": {
+            "$ref": "#/components/schemas/MaterialType"
+          },
+          "inputType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "document",
+              "url"
+            ],
+            "title": "Inputtype"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sourceId",
+          "materialType",
+          "inputType"
+        ],
+        "title": "ReferenceMaterial"
+      },
+      "ResumeValidationPolicy": {
+        "properties": {
+          "maximumFileSizeBytes": {
+            "$ref": "#/components/schemas/FileSizeLimits"
+          },
+          "maximumDirectTextCharacters": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Maximumdirecttextcharacters"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "maximumFileSizeBytes",
+          "maximumDirectTextCharacters"
+        ],
+        "title": "ResumeValidationPolicy"
+      },
+      "RetryRequest": {
+        "properties": {
+          "moduleKey": {
+            "type": "string",
+            "enum": [
+              "spellCheck",
+              "companyContextAnalysis",
+              "jobPostingAnalysis",
+              "finalReview"
+            ],
+            "title": "Modulekey"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "moduleKey"
+        ],
+        "title": "RetryRequest"
+      },
+      "ReviewRecord": {
+        "properties": {
+          "runId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Runid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageDocument"
+              },
+              {
+                "$ref": "#/components/schemas/FlowDocument"
+              }
+            ],
+            "title": "Document"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceMaterial"
+            },
+            "type": "array",
+            "title": "Materials"
+          },
+          "previousReview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreviousReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "moduleResults": {
+            "$ref": "#/components/schemas/CompletedModules"
+          },
+          "response": {
+            "$ref": "#/components/schemas/ReviewResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "runId",
+          "createdAt",
+          "document",
+          "materials",
+          "moduleResults",
+          "response"
+        ],
+        "title": "ReviewRecord",
+        "description": "JSON record shared by storage and retry; contains no runtime objects."
+      },
+      "ReviewResponse": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ReviewStatus"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleErrorDTO"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "materialReviews": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialReviewDTO"
+            },
+            "type": "array",
+            "title": "Materialreviews"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionDTO"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "errors",
+          "materialReviews",
+          "results"
+        ],
+        "title": "ReviewResponse"
+      },
+      "ReviewStatus": {
+        "type": "string",
+        "enum": [
+          "success",
+          "partial",
+          "failed",
+          "cancelled"
+        ],
+        "title": "ReviewStatus"
+      },
+      "RunAccepted": {
+        "properties": {
+          "runId": {
+            "type": "string",
+            "title": "Runid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "runId"
+        ],
+        "title": "RunAccepted"
+      },
+      "SpellDiagnostic": {
+        "properties": {
+          "lineId": {
+            "type": "string",
+            "title": "Lineid"
+          },
+          "quote": {
+            "type": "string",
+            "title": "Quote"
+          },
+          "replacement": {
+            "type": "string",
+            "title": "Replacement"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lineId",
+          "quote",
+          "replacement",
+          "reason"
+        ],
+        "title": "SpellDiagnostic"
+      },
+      "StoredRetryRequest": {
+        "properties": {
+          "moduleKey": {
+            "type": "string",
+            "enum": [
+              "spellCheck",
+              "companyContextAnalysis",
+              "jobPostingAnalysis",
+              "finalReview"
+            ],
+            "title": "Modulekey"
+          },
+          "record": {
+            "$ref": "#/components/schemas/ReviewRecord"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "moduleKey",
+          "record"
+        ],
+        "title": "StoredRetryRequest"
+      },
+      "SuggestionDTO": {
+        "properties": {
+          "수정포인트위치": {
+            "$ref": "#/components/schemas/SuggestionLocation"
+          },
+          "수정성격": {
+            "type": "string",
+            "enum": [
+              "맞춤법",
+              "사실성",
+              "근거",
+              "직무 관련성",
+              "회사 맥락",
+              "뉘앙스",
+              "가독성",
+              "기밀"
+            ],
+            "title": "수정성격"
+          },
+          "검토출처": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "기본 검토",
+                "채용 공고",
+                "회사 자료"
+              ]
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "검토출처"
+          },
+          "검토자료근거": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialEvidence"
+            },
+            "type": "array",
+            "title": "검토자료근거"
+          },
+          "이유 및 제안": {
+            "type": "string",
+            "minLength": 1,
+            "title": "이유 및 제안"
+          },
+          "실제 수정 예시": {
+            "type": "string",
+            "minLength": 1,
+            "title": "실제 수정 예시"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "수정포인트위치",
+          "수정성격",
+          "검토출처",
+          "검토자료근거",
+          "이유 및 제안",
+          "실제 수정 예시"
+        ],
+        "title": "SuggestionDTO"
+      },
+      "SuggestionLocation": {
+        "properties": {
+          "lineIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Lineids"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Quote"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lineIds",
+          "quote"
+        ],
+        "title": "SuggestionLocation"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

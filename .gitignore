@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+node_modules/
+dist/
+*.tsbuildinfo
+backend/benchmarks/ocr/generated/
+backend/benchmarks/ocr/reports/
