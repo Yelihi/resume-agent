@@ -16,8 +16,12 @@ def _normalized_bbox(raw: tuple[float, float, float, float], width: float, heigh
     return NormalizedBBox(x=x0 / width, y=y0 / height, width=(x1 - x0) / width, height=(y1 - y0) / height)
 
 
-def extract_embedded_blocks(page: pymupdf.Page, page_number: int) -> list[PageBlock]:
-    raw = page.get_text("dict", sort=False)
+def extract_embedded_blocks(page: pymupdf.Page, page_number: int, *, ignore_actual_text: bool = False) -> list[PageBlock]:
+    # Expose missing Unicode mappings as U+FFFD so the OCR fallback can detect them.
+    flags = pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_CID_FOR_UNKNOWN_UNICODE
+    if ignore_actual_text:
+        flags |= pymupdf.TEXT_IGNORE_ACTUALTEXT
+    raw = page.get_text("dict", sort=False, flags=flags)
     blocks: list[PageBlock] = []
     line_number = 1
     for raw_block in raw["blocks"]:

@@ -45,7 +45,7 @@ def test_flow_start_result_and_sse_contract() -> None:
             events = await client.get(f"/api/reviews/{run_id}/events")
 
             assert result.status_code == 200
-            assert result.json() == {"status": "success", "errors": [], "materialReviews": [], "results": []}
+            assert result.json() == {"status": "success", "errors": [], "materialReviews": [], "results": [], "resolutionChecks": [], "experienceRecommendations": []}
             assert events.status_code == 200
             assert events.headers["content-type"].startswith("text/event-stream")
             assert "event: spellCheck" in events.text

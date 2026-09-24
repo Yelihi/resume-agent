@@ -1,0 +1,99 @@
+# 프런트엔드 리팩터링 검증 — 2026-09-10
+
+## 차단 사항
+
+코드 검토와 자동 검증 범위에서 남은 차단 사항은 없다. 브라우저 검증은 아래와 같이 미완료다. 기존 작업 트리의 백엔드 및 API 스키마 변경은 이번 리팩터링의 변경 범위에 포함하지 않았다.
+
+## 경고
+
+- `src/components/Dialog.tsx:17`: jsdom은 네이티브 모달의 실제 Tab 순환과 배경 inertness를 재현하지 않는다. 브라우저 연결을 시도했으나 사용 가능한 브라우저 목록이 비어 있어 시각·상호작용 검증을 실행하지 못했다.
+- `src/design-system/tokens.css:29`: 모든 UI 글꼴 크기를 토큰화하고 메타데이터 최소 크기를 0.75rem으로 높였다. 좁은 화면에서 줄바꿈·넘침 변화는 실제 브라우저로 확인해야 한다.
+- `src/storage/snapshot.ts:5`: 현재 snapshot 비교는 문서 본문까지 직렬화한다. 로컬 자료량이 커지면 갱신 비용을 측정하고 revision 기반 비교를 고려한다. 다른 탭 변경은 focus/load 시 반영한다.
+
+## 검토 및 수정 근거
+
+- `src/App.tsx:17`: 화면 조립과 의존성 주입으로 축소했다. 업무 흐름은 application 훅, 공유 타입은 domain, 표시 컴포넌트는 features/components로 분리했다.
+- `src/application/useDraftState.ts:4`: 취소·초기화·교체·언마운트된 초안에 늦은 API 결과가 반영되는 경합을 공통 소유권 검사로 막았다. 이력서·자료 흐름의 재현 테스트를 추가했다.
+- `src/storage/subscription.test.ts`: 커밋 후 알림, 실패한 다중 연결의 롤백, 동시 버전 수정 충돌, Blob/엔티티 참조 유지, 중첩 load와 실패한 검토 완료를 검사한다.
+- `src/features/resume/ResumePreview.tsx:14`: 선택한 문서를 구독하는 wrapper에 memo 경계를 두었다. 진행 상태 및 실제 의견 저장 시 뷰어가 다시 렌더링되지 않는 테스트를 추가했다.
+- `src/application/useReviewWorkflow.test.tsx`, `src/api/review.stream.test.ts`: SSE 수명, 늦은 이벤트, 저장 실패와 재접속, 취소·해제 및 중복 실행을 검사한다.
+- `src/viewer/ResumeViewer.test.tsx`: 선택 인용 스크롤, 비동기 PDF 로딩 정리, 오류 표시 및 캔버스 렌더링 정리를 검사한다.
+- `src/components/Dialog.test.tsx`, `src/components/SegmentedTabs.test.tsx`: Escape·busy·포커스 복원·중첩 모달과 방향키/Home/End·roving tabindex를 검사한다.
+- 기존 App 통합 테스트는 기능을 유지한다. 자료를 연속 해제하는 테스트는 첫 비동기 저장이 완료되어 다음 버튼이 활성화된 뒤 진행하도록 수정했다.
+
+## 최종 실행 결과
+
+| 검사 | 결과 |
+| --- | --- |
+| `cd frontend && pnpm test` | 24개 파일, 105개 테스트 통과 |
+| `cd frontend && pnpm build` | TypeScript 및 Vite 프로덕션 빌드 통과 |
+| `git diff --check -- frontend .frontend-system/project.md` | 통과 |
+| 실제 브라우저 화면·반응형 검증 | 브라우저 연결 불가로 미실행 |
+
+빌드에는 strict, 미사용 선언·인자, switch fallthrough 검사가 포함된다. 새 런타임 의존성은 추가하지 않았다. fs-verify의 전용 get_change_context/run_project_checks 도구가 이 세션에 없어 git diff와 프로젝트의 실제 검사 스크립트로 대체했다. Storybook과 E2E 프레임워크는 기존 프로젝트에 없으며 이번에 추가하지 않았다.
+
+## 경험 기록·작성 검증 — 2026-09-15
+
+- 전체 프런트엔드: `pnpm test` — 31개 파일, 133개 테스트 통과.
+- 백엔드: `.venv/bin/python -m pytest tests/test_experience_writing.py tests/review tests/reference_material -q` — 64개 통과. 실제 AI 호출 없음.
+- `pnpm build` 및 `git diff --check` 통과. Mermaid 관련 lazy chunk의 500kB 경고는 남아 있으며 도표를 열 때 로드한다.
+- 저장소: v2→v3 기존 context 보존, 원본 Blob 보존, 원본 추가, context별 작성본 분리, 오래된 revision 저장 거부, context 삭제 후 공통 원본 유지.
+- UI: 메모만으로 등록, 초안 명시적 저장, 저장 실패 후 재시도, 미저장 편집 이동 보호, 현재 Markdown 요약 복사, HTML·위험 링크 처리.
+- 별도 Chromium 테스트 환경의 1440px·390px 화면에서 파일 첨부/원본 다운로드(바이트 비교), 표·Mermaid 렌더링, 클립보드 복사, 새로고침 복원, 원본 추가 후 기존 작성본 유지·갱신 안내, 모바일 가로 넘침 없음 확인. 브라우저 pageerror 없음.
+- 브라우저 검증은 샘플 데이터와 대체 API 응답으로 실행했다. GitHub/Gerrit 접근 성공률·실제 AI 문장 품질·유료 호출은 검증하지 않았다.
+- 로컬 화면 캡처: `/private/tmp/resume-experience-browser/`의 `library-desktop.png`, `writing-desktop.png`, `writing-mobile.png`, `editor-mobile.png`.
+
+
+## 경험 편집·JD 추천 검증 — 2026-09-21
+
+- 재현: `cd frontend && pnpm test`, `pnpm build`; `cd backend && uv run pytest`.
+- `/experiences` → 경험 남기기 → Markdown 작성/문서 첨부 → 자료로 초안 작성 → 편집 → Markdown/Preview 탭 확인 → 메타데이터 생성 → 메타데이터 수정 → 최종 저장. 본문·제목·기간을 바꾸면 최종 저장이 막히고 메타데이터 재생성을 요구해야 한다. AI 및 저장 오류 뒤 입력과 첨부 자료를 유지해야 한다.
+- 이력서 작업 공간에 JD 연결 → 검토할 경험 선택 또는 미선택 → 검토. 미선택이면 자동 추천·문구, 선택한 경험이면 적합/생략 사유, 미선택 추가 후보이면 이유와 승인 버튼을 표시한다. 추가 승인을 누르기 전에는 후보 문구를 생성하지 않는다. 승인 후 문구를 편집·저장하고 다음 검토 선택에도 포함한다.
+- 경험/JD/이력서를 바꾼 뒤 과거 추천의 추가 작성을 승인해도 당시 입력으로 생성해야 한다. `src/features/experiences/recommendations.test.tsx`와 `src/infrastructure/workspace/experience-recommendations.test.ts`에서 보관·재실행·저장 실패 후 복구를 확인한다. 기존 이력서 위치 제안 검증은 유지한다.
+- 프런트엔드 전체 33개 파일, 138개 테스트 통과. 백엔드 전체 140개 통과, 2개 기존 선택 실행 검사 skip. OpenAPI 재생성 및 TypeScript/Vite 빌드 통과. 기존 큰 번들 경고는 남아 있다.
+- 브라우저 스킬로 Chrome의 별도 로컬 검증 환경에서 Markdown 편집 → 메타데이터 미리보기 → 사용자 수정 → 최종 저장, 추천 승인 → 문구 생성 → 문구 저장을 실제 UI로 확인했다. 390px에서 편집/추천 화면 모두 document scrollWidth=clientWidth=390이었다. 추천 화면 console error 없음.
+- 브라우저 AI 응답은 로컬 대체 응답을 사용했다. 실제 AI 추천·문장 품질, 링크 접근 품질, 유료 호출은 검증하지 않았다. 검증용 HTML/TSX와 임시 API 서버는 제품에 포함하지 않는다.
+- 화면 근거: `/tmp/resume-agent-experience-20260921/`의 `editor-mobile.png`, `recommendations-desktop.png`, `recommendations-mobile.png`.
+- FS 전용 실행 기록 도구는 이 세션에 없어 직접 실행 결과를 여기에 기록했다. 모델 기반 코드 검토에서 소스 버전 고정, 사용자 승인 이전의 문구 생성 차단, 외부 URL 이미지 제한, 구형 경험/작성본 보존, 오류 시 초안 보존을 확인했다. 자동 검사는 실제 모델의 사실성이나 추천 품질을 보장하지 않는다.
+
+
+## 경험 편집 UI 개선 — 2026-09-22
+
+- Preview는 AI 호출 없이 현재 Markdown을 즉시 렌더링한다. 키보드 방향키로 탭을 전환해도 작성 내용과 메타데이터 유효성을 유지한다. 메타데이터 생성은 별도 버튼으로 실행하고 현재 탭을 유지한다.
+- 자료 확인 결과의 AI 설명은 숨기고 자료 이름·확인 상태를 리스트로 표시한다. 파일 추출, 확인한 링크, 확인 불가 링크를 구분하고 보완 질문은 유지한다.
+- 초안·메타데이터 프롬프트는 문제 → 분석 → 해결 → 기대 결과 → 실제 결과와 근거 순서를 사용한다. 기대 목표·가설과 측정된 실제 성과를 구별하며 근거 없는 정보는 확인 필요로 남긴다. 응답 스키마 변경은 없다.
+- 재현: 경험 남기기 → 본문 입력 → Preview/Markdown 왕복 → 자료로 초안 작성 → 자료 상태/보완 질문 확인 → 메타데이터 생성 → 본문 수정 시 저장 비활성 확인 → 재생성 → 메타데이터 수정 → 최종 저장. 메타데이터 전체 삭제 후에도 입력칸을 유지하고 저장을 차단한다.
+- 검증: `cd frontend && pnpm test` 33개 파일 138개 테스트 통과, `pnpm build` 통과(기존 큰 청크 경고 유지). `cd backend && uv run pytest tests/test_experience_authoring.py tests/test_experience_writing.py` 5개 통과.
+- Chrome에서 별도 예제 저장소/AI 대체 응답으로 자료 리스트, Preview, 메타데이터 생성 후 현재 탭 유지, 최종 저장을 확인했다. 콘솔 오류 없음. 390px 모바일에서 document scrollWidth와 clientWidth 모두 390이며 데스크톱/모바일 배치를 확인했다. 이미지: `/tmp/resume-agent-experience-20260922/desktop.png`, `/tmp/resume-agent-experience-20260922/mobile.png`. 임시 검증 페이지는 제거했다.
+- 실제 유료 AI 생성 품질은 미검증이다. FS 전용 기록 도구가 없어 이 문서에 직접 실행 결과를 기록했다.
+
+
+## 경험 AI 작업 진행 표시 — 2026-09-22
+
+- 초안 작성과 메타데이터 생성은 같은 POST API에서 `Accept: text/event-stream`으로 진행/완료/실패를 받는다. 기존 JSON 응답은 유지한다. 초안은 자료 준비·파일 읽기·서버 링크 확인·본문 작성, 메타데이터는 준비·서버 근거 정리 상태를 표시하며 가상 진행률은 사용하지 않는다.
+- 생성 영역 왼쪽 위의 `role=status`가 진행 문구를 읽어 주고 해당 영역은 스켈레톤으로 전환된다. 다른 영역은 원문을 유지한다. 동작 감소 설정을 존중한다. 실패·연결 종료 시 스켈레톤을 제거하고 입력을 복원한다. 화면 unmount 시 요청을 abort하며 서버는 연결 종료 시 생성 작업을 취소한다.
+- 재현: 경험 기록 → 경험 남기기 → 본문/링크 입력 → 자료로 초안 작성 → 본문 내부 진행 문구·스켈레톤 → 결과 입력칸 복원 → 메타데이터 생성 → 메타데이터 영역 진행 문구·스켈레톤 → 결과 편집·최종 저장. 오류 후에도 기존 본문/자료/메타데이터가 남아야 한다.
+- 자동 검증: 프런트엔드 `pnpm test` 34개 파일 141개 테스트 통과, `pnpm build` 통과(기존 큰 청크 경고). 백엔드 경험 작성 테스트 7개 통과. SSE UTF-8 분할/CRLF/heartbeat/불완전 응답/실패 처리, 생성 영역별 로딩 및 복원, 완료 전 진행 이벤트 전달과 연결 해제 시 서버 작업 취소를 검사했다. OpenAPI 및 프런트엔드 타입 재생성 완료.
+- Chrome에서 실제 프런트엔드 → Vite 프록시 → FastAPI SSE 경로를 확인했다. AI 게이트웨이만 지연된 예제 응답으로 대체했으며 유료 AI 호출은 하지 않았다. 초안과 메타데이터의 진행 UI 및 완료 후 입력 복원을 확인했다.
+- 모바일 390px에서도 진행 문구와 스켈레톤을 확인했고 document scrollWidth/clientWidth 모두 390이었다. 콘솔 오류 없음. 화면 근거: `/tmp/resume-agent-loading-20260922/metadata-mobile.png`. 검증용 서버/페이지는 정리했다.
+
+## 초대형 서버 배포 기반 — 2026-09-24
+
+- 프런트엔드 `pnpm test`: **37개 파일 145개 통과**. `pnpm build`: TypeScript/Vite 통과, 기존 500kB 청크 경고 유지. OpenAPI 및 클라이언트 타입 재생성 완료.
+- 백엔드 `uv run pytest -m 'not ai and not ocr' -q`: **172개 통과, 2개 제외**. 실제 유료 AI와 모델 OCR은 실행하지 않았다. 이후 백업 준비 디렉터리 권한 검사 변경은 해당 백업 테스트 3개를 다시 실행해 통과했다.
+- `node --test deploy/cloudflare/worker.test.mjs`: 2개 통과. 임의 사용자 헤더·쿠키·서비스 자격증명 제거, 동일 출처 쓰기, 원본 리디렉션 거부, SSE 전달, API/SPA 경로 분리를 검사한다.
+- `/bin/sh deploy/run-app.sh --self-test`, 셸 구문 검사, Compose 렌더링과 `git diff --check` 통과. 가짜 SSD로 미마운트·UUID 표시 불일치·공개 디렉터리 권한을 거부하며 경로를 자동 생성하지 않는지 검사했다. 실제 SSD 설정·Docker 이미지 실행·ARM OCR은 미검증이다.
+- 서버 검사 범위: JWT 위조/만료·초대 철회/정지, 사용자별 키/파일/작업 공간/검토/SSE 격리, 저장된 입력만 AI에 전달, 결과 커밋 이전 완료 이벤트 금지, DB 저장 실패·재시작 복구, 작업 중 권한 철회, 일관된 백업·원본 해시와 복원 검사. 단위 검사는 실제 Access/MFA/Cloudflare 설정을 대신하지 않는다.
+- 프런트엔드 검사 범위: 인증 모드에 따른 저장소 선택, 실패한 저장의 업로드 정리, 오래된 서버 응답 무시, 서버 검토 결과 확인, Blob 포함 내보내기/가져오기, 설정의 키 등록·삭제와 오류 보존. 이관은 빈 계정에만 허용하며 기존 IndexedDB를 지우지 않는다.
+- Browser 스킬의 Chrome에서 로컬/서버 설정 화면과 실제 API 연결을 확인했다. 별도 임시 서버에서 Access JWT/JWKS만 테스트용으로 대체하고 실제 DB·키 암호화 경로를 사용했다. 합성 API 키 저장 후 마스킹 표시·입력 초기화를 확인했다. 실제 OpenAI 호출은 없었다.
+- 키 삭제 확인 대화상자 이후 브라우저 제어가 응답하지 않아 삭제 완료·새로고침·모바일 반응형 검증은 완료하지 못했다. 이전 화면 관찰의 카드 간격 문제는 CSS로 수정하고 빌드는 통과했으나 변경 후 시각 확인은 남아 있다. 최종 검증을 완료했다고 간주하지 않는다.
+- 미실행: 실제 도메인 Access 우회/로그아웃/세션 만료/MFA, 두 실계정, Cloudflare 업로드/SSE/PDF Range, 실제 R2 전송·새 디렉터리 복원, 맥미니 부팅·FileVault/외장 SSD 잠금 해제·장시간 부하. 유료 AI 품질 검증도 별도다.
+- FS 전용 기록 도구는 노출되지 않아 실제 실행 결과를 여기에 기록했다. 외부 배포·계정/인프라 생성·커밋/푸시는 하지 않았다.
+
+## GitHub CI/CD와 무료 주소 전환 — 2026-09-24
+
+- `Yelihi/resume-agent` 연결을 요청받아 GitHub Actions workflow를 추가했다. PR/main에서 잠금 설치, 백엔드·프런트 테스트, OpenAPI 타입 일치, 빌드, Worker/배포/SSD 검사를 수행한다. CD는 초기 설치와 비공개 저장소 확인 후 명시적 변수로 활성화한다.
+- 같은 코드에서 프런트 **145개/37파일**, 백엔드 **172개(2개 제외)**와 프로덕션 빌드 통과. OpenAPI 및 생성 타입의 재생성 결과 일치. 배포 상태 전환 표준 라이브러리 검사 **3개**, VPC Worker 검사 **2개**, SSD/셸 검사 통과.
+- actionlint 1.7.12 문법 검사, Wrangler 4.137.0 deploy dry-run 통과. 실제 계정 업로드는 없음. Gitleaks 8.30.1로 현재 게시 후보 파일과 기존 Git 이력 검사 통과. 두 테스트의 합성 키만 해당 줄에 명시적 허용 주석을 붙였으며 실제 secret을 허용한 것이 아니다.
+- 프록시는 구매 도메인/공개 원본 Service Auth 대신 무료 workers.dev + Access + Workers VPC Service 전용으로 바꿨다. 단위 검사는 실제 베타 VPC/Tunnel 연결·SSE 검증을 대신하지 않는다.
+- GitHub의 실제 CI 실행 결과, Mac runner 등록과 실제 배포, Cloudflare OAuth/API 설정은 별도로 확인해야 한다. 네이티브 CD만 준비했으며 Docker CD는 실장비 검증 후 연결한다. 자세한 절차는 deploy/CI_CD.md.

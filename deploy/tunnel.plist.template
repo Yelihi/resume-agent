@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.resume-agent.tunnel</string>
+  <key>ProgramArguments</key><array>
+    <string>__CLOUDFLARED_BINARY_PATH__</string><string>tunnel</string><string>--no-autoupdate</string><string>--protocol</string><string>quic</string><string>run</string><string>--token-file</string><string>__PRIVATE_TUNNEL_TOKEN_PATH__</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>Umask</key><integer>63</integer>
+</dict></plist>

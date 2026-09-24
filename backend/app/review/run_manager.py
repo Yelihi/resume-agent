@@ -1,4 +1,6 @@
 import asyncio
+import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -6,10 +8,13 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict
 
-from app.document_processing.models import FlowDocument, PageDocument
+from app.deployment.auth import User
+from app.deployment.jobs import watch_user
+
+from app.document_processing.models import FlowDocument, ModuleErrorDTO, PageDocument
 from app.reference_material.models import MaterialType, ReferenceMaterial
 
-from .contracts import AiReviewOutput, ModuleResult, PreviousReview, ReviewResponse, ReviewStatus, ReviewRecord, CompletedModules
+from .contracts import ModuleResult, PreviousReview, ReviewResponse, ReviewStatus, ReviewRecord, CompletedModules, ReviewContext
 from .orchestrator import ReviewGateway, ReviewOrchestrator, build_outcome
 from .spell_check import check_spelling
 
@@ -30,8 +35,14 @@ class ReviewRun:
     runId: str
     document: PageDocument | FlowDocument
     materials: list[ReferenceMaterial]
+    ownerId: str | None = None
+    ownerUser: User | None = None
+    gateway: ReviewGateway | None = None
+    finish: Callable[["ReviewRun"], Awaitable[None]] | None = None
+    started: bool = False
     createdAt: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     previousReview: PreviousReview | None = None
+    reviewContext: ReviewContext | None = None
     moduleResults: dict[str, ModuleResult[Any]] = field(default_factory=dict)
     progressEvents: list[ProgressEvent] = field(default_factory=list)
     response: ReviewResponse | None = None
@@ -41,30 +52,52 @@ class ReviewRun:
 
 
 class ReviewRunManager:
-    def __init__(self, gateway: ReviewGateway) -> None:
+    def __init__(self, gateway: ReviewGateway | None) -> None:
         self.gateway = gateway
         self._runs: dict[str, ReviewRun] = {}
+
+    async def shutdown(self) -> None:
+        runs = list(self._runs.values())
+        for run in runs:
+            if run.task and not run.task.done():
+                self.cancel(run.runId)
+        await asyncio.gather(*(run.task for run in runs if run.task), return_exceptions=True)
+        if self.gateway is not None:
+            client = getattr(self.gateway, "client", None)
+            if client is not None:
+                await client.close()
 
     def start(
         self,
         document: PageDocument | FlowDocument,
         materials: list[ReferenceMaterial],
         previous_review: PreviousReview | None = None,
+        review_context: ReviewContext | None = None,
+        *, owner_id: str | None = None, owner_user: User | None = None, gateway: ReviewGateway | None = None,
+        finish: Callable[[ReviewRun], Awaitable[None]] | None = None,
     ) -> str:
         self._ensure_idle()
         run_id = str(uuid4())
         run = ReviewRun(
-            runId=run_id,
+            runId=run_id, ownerId=owner_id, ownerUser=owner_user, gateway=gateway, finish=finish,
             document=document,
             materials=materials,
-            previousReview=previous_review,
+            previousReview=previous_review, reviewContext=review_context,
         )
         self._runs[run_id] = run
-        run.task = asyncio.create_task(self._execute(run))
+        run.task = asyncio.create_task(self._run(run))
         return run_id
 
+    def _prune(self) -> None:
+        # Completed server runs are replayable for one hour, up to 100 recent runs.
+        now = datetime.now(timezone.utc)
+        completed = [run for run in self._runs.values() if run.ownerId and run.task and run.task.done()]
+        for index, run in enumerate(completed):
+            if (now - run.createdAt).total_seconds() > 3600 or index < len(completed) - 100:
+                del self._runs[run.runId]
+
     def _ensure_idle(self) -> None:
-        # ponytail: one local user; use per-user execution limits for a shared server.
+        self._prune()
         if any(run.task is not None and not run.task.done() for run in self._runs.values()):
             raise ReviewAlreadyRunningError("a review is already running")
 
@@ -75,14 +108,16 @@ class ReviewRunManager:
         return ReviewRecord(
             runId=run.runId, createdAt=run.createdAt,
             document=run.document, materials=run.materials,
-            previousReview=run.previousReview,
+            previousReview=run.previousReview, reviewContext=run.reviewContext,
             moduleResults=CompletedModules.model_validate({
                 key: result.model_dump() for key, result in run.moduleResults.items()
             }),
             response=run.response,
         )
 
-    def restore_retry(self, record: ReviewRecord, module_key: str) -> str:
+    def restore_retry(self, record: ReviewRecord, module_key: str, *,
+                      owner_id: str | None = None, owner_user: User | None = None, gateway: ReviewGateway | None = None,
+                      finish: Callable[[ReviewRun], Awaitable[None]] | None = None) -> str:
         self._ensure_idle()
         modules = {
             key: result for key in type(record.moduleResults).model_fields
@@ -92,11 +127,12 @@ class ReviewRunManager:
             raise ValueError("module has no saved input")
         run_id = str(uuid4())
         run = ReviewRun(
-            runId=run_id, document=record.document, materials=record.materials,
-            previousReview=record.previousReview, moduleResults=modules,
+            runId=run_id, ownerId=owner_id, ownerUser=owner_user, gateway=gateway, finish=finish,
+            document=record.document, materials=record.materials,
+            previousReview=record.previousReview, reviewContext=record.reviewContext, moduleResults=modules,
         )
         self._runs[run_id] = run
-        run.task = asyncio.create_task(self._retry(run, module_key))
+        run.task = asyncio.create_task(self._run(run, module_key))
         return run_id
 
     def release(self, run_id: str) -> None:
@@ -119,22 +155,59 @@ class ReviewRunManager:
         run.moduleResults[result.moduleKey] = result
         await self._notify(run)
 
-    async def _execute(self, run: ReviewRun) -> None:
+    async def _run(self, run: ReviewRun, module_key: str | None = None) -> None:
+        run.started = True
+        event, message = "completed", "이력서 검토가 완료되었습니다."
         try:
-            outcome = await ReviewOrchestrator(self.gateway).run(
-                run.document,
-                run.materials,
-                previous_review=run.previousReview,
-                on_progress=lambda event, message: self._progress(run, event, message),
-                on_module=lambda result: self._module(run, result),
-            )
-            run.response = outcome.response
-            await self._progress(run, "completed", "이력서 검토가 완료되었습니다.")
+            if run.cancelRequested:
+                raise asyncio.CancelledError
+            async with watch_user(run.ownerUser or (User(run.ownerId, "") if run.ownerId else None)), asyncio.timeout(300):
+                if module_key:
+                    await self._retry(run, module_key)
+                else:
+                    outcome = await ReviewOrchestrator(run.gateway or self.gateway).run(
+                        run.document, run.materials, previous_review=run.previousReview,
+                        review_context=run.reviewContext,
+                        on_progress=lambda event, message: self._progress(run, event, message),
+                        on_module=lambda result: self._module(run, result),
+                    )
+                    run.response = outcome.response
         except asyncio.CancelledError:
             run.response = ReviewResponse(status=ReviewStatus.CANCELLED, errors=[], materialReviews=[], results=[])
-            await self._progress(run, "cancelled", "이력서 검토를 취소했습니다.")
+            event, message = "cancelled", "이력서 검토를 취소했습니다."
+        except Exception:
+            logging.getLogger("resume_agent.review").warning("Review execution failed")
+            self._failure(run)
+        try:
+            if run.finish:
+                await run.finish(run)
+        except Exception:
+            logging.getLogger("resume_agent.review").warning("Review persistence failed")
+            self._failure(run)
+            event, message = "failed", "검토 결과를 저장하지 못했습니다. 다시 시도해 주세요."
+        finally:
+            run.gateway = None
+            run.finish = None
+            run.ownerUser = None
+        await self._progress(run, event, message)
+
+    def _failure(self, run: ReviewRun) -> None:
+        keys = ["spellCheck", "finalReview"]
+        for kind, key in ((MaterialType.COMPANY, "companyContextAnalysis"),
+                          (MaterialType.JOB_POSTING, "jobPostingAnalysis")):
+            if any(item.materialType is kind for item in run.materials):
+                keys.append(key)
+        for key in keys:
+            if key not in run.moduleResults or key == "finalReview":
+                error = ModuleErrorDTO(moduleKey=key, inputSourceId=None, errorCode="REVIEW_FAILED",
+                    userMessage="검토를 완료하지 못했습니다. 다시 시도해 주세요.", canRetry=True)
+                run.moduleResults[key] = ModuleResult(moduleKey=key, output=None, errors=[error])
+        run.response = ReviewResponse(status=ReviewStatus.FAILED,
+            errors=[error for module in run.moduleResults.values() for error in module.errors],
+            materialReviews=[], results=[])
 
     def get(self, run_id: str) -> ReviewRun:
+        self._prune()
         try:
             return self._runs[run_id]
         except KeyError as error:
@@ -151,21 +224,28 @@ class ReviewRunManager:
     def cancel(self, run_id: str) -> None:
         run = self.get(run_id)
         run.cancelRequested = True
-        if run.task and not run.task.done():
+        if run.started and run.response is None and run.task and not run.task.done():
             run.task.cancel()
 
     def events(self, run_id: str) -> list[ProgressEvent]:
         return list(self.get(run_id).progressEvents)
 
-    async def stream_events(self, run_id: str):
+    async def stream_events(self, run_id: str, heartbeat: float | None = None):
         run = self.get(run_id)
         index = 0
-        terminal = {"completed", "cancelled"}
+        terminal = {"completed", "cancelled", "failed"}
         while True:
+            pending = []
             async with run.changed:
-                await run.changed.wait_for(lambda: len(run.progressEvents) > index)
-                pending = run.progressEvents[index:]
-                index = len(run.progressEvents)
+                try:
+                    await asyncio.wait_for(run.changed.wait_for(lambda: len(run.progressEvents) > index), heartbeat)
+                    pending = run.progressEvents[index:]
+                    index = len(run.progressEvents)
+                except TimeoutError:
+                    pass
+            if not pending:
+                yield ProgressEvent(event="keepalive", message="")
+                continue
             for event in pending:
                 yield event
             if pending[-1].event in terminal:
@@ -182,29 +262,25 @@ class ReviewRunManager:
         }:
             raise ValueError("module cannot be retried")
         run.cancelRequested = False
+        run.started = False
         run.response = None
         run.progressEvents.clear()
-        run.task = asyncio.create_task(self._retry(run, module_key))
+        run.task = asyncio.create_task(self._run(run, module_key))
 
     async def _retry(self, run: ReviewRun, module_key: str) -> None:
-        try:
-            if module_key != "finalReview":
-                await self._progress(run, module_key, "선택한 검토 모듈을 다시 실행하고 있습니다.")
-                result = await self._retry_module(run, module_key)
-                run.moduleResults[module_key] = result
-            preliminary = [
-                result
-                for key, result in run.moduleResults.items()
-                if key != "finalReview"
-            ]
-            await self._progress(run, "finalReview", "수정 제안을 다시 종합하고 있습니다.")
-            final = await self.gateway.final_review(run.document, preliminary, run.previousReview, run.materials)
-            run.moduleResults["finalReview"] = final
-            run.response = build_outcome(run.document, preliminary, final, run.materials).response
-            await self._progress(run, "completed", "이력서 재검토가 완료되었습니다.")
-        except asyncio.CancelledError:
-            run.response = ReviewResponse(status=ReviewStatus.CANCELLED, errors=[], materialReviews=[], results=[])
-            await self._progress(run, "cancelled", "이력서 검토를 취소했습니다.")
+        if module_key != "finalReview":
+            await self._progress(run, module_key, "선택한 검토 모듈을 다시 실행하고 있습니다.")
+            result = await self._retry_module(run, module_key)
+            run.moduleResults[module_key] = result
+        preliminary = [
+            result
+            for key, result in run.moduleResults.items()
+            if key != "finalReview"
+        ]
+        await self._progress(run, "finalReview", "수정 제안을 다시 종합하고 있습니다.")
+        final = await (run.gateway or self.gateway).final_review(run.document, preliminary, run.previousReview, run.materials, **({"review_context": run.reviewContext} if run.reviewContext else {}))
+        run.moduleResults["finalReview"] = final
+        run.response = build_outcome(run.document, preliminary, final, run.materials, run.reviewContext).response
 
     async def _retry_module(self, run: ReviewRun, module_key: str) -> ModuleResult[Any]:
         if module_key == "spellCheck":
@@ -217,4 +293,4 @@ class ReviewRunManager:
         materials = [item for item in run.materials if item.materialType is material_type]
         if not materials:
             raise ValueError("module has no input material")
-        return await self.gateway.analyze_materials(module_key, materials)
+        return await (run.gateway or self.gateway).analyze_materials(module_key, materials)

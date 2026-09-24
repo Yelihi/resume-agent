@@ -1,0 +1,7 @@
+# Legacy public-hostname example only. The workers.dev/VPC deployment does not use ingress or a purchased domain.
+tunnel: __TUNNEL_UUID__
+credentials-file: __PRIVATE_TUNNEL_CREDENTIALS_PATH__
+ingress:
+  - hostname: __ORIGIN_HOSTNAME__
+    service: http://127.0.0.1:8000
+  - service: http_status:404

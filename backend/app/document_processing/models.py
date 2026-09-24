@@ -28,6 +28,22 @@ class NormalizedBBox(ContractModel):
         return self
 
 
+class ExtractionIssue(ContractModel):
+    stage: Literal["assessment", "recovery"]
+    code: str
+    message: str
+    pageNumber: int | None = None
+    lineIds: list[str] = Field(default_factory=list)
+    bbox: NormalizedBBox | None = None
+    recovered: bool = False
+
+
+class ExtractionReport(ContractModel):
+    status: Literal["complete", "recovered", "needs_review"]
+    issues: list[ExtractionIssue] = Field(default_factory=list)
+    confirmed: bool = False
+
+
 class PageLine(ContractModel):
     lineId: str = Field(pattern=r"^p[1-9]\d*-l[1-9]\d*$")
     text: str = Field(min_length=1)
@@ -49,6 +65,7 @@ class DocumentPage(ContractModel):
 
 class PageDocument(ContractModel):
     pages: list[DocumentPage] = Field(min_length=1)
+    extraction: ExtractionReport | None = None
 
     @model_validator(mode="after")
     def validate_ids(self) -> Self:
@@ -99,6 +116,7 @@ def utf16_slice(text: str, start: int, end: int) -> str:
 class FlowDocument(ContractModel):
     text: str = Field(min_length=1)
     blocks: list[FlowBlock] = Field(min_length=1)
+    extraction: ExtractionReport | None = None
 
     @model_validator(mode="after")
     def validate_lines(self) -> Self:

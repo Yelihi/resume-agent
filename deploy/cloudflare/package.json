@@ -1,0 +1,6 @@
+{
+  "name": "resume-agent-deployment",
+  "private": true,
+  "type": "module",
+  "devDependencies": { "wrangler": "4.137.0" }
+}

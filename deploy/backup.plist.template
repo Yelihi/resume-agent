@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.resume-agent.backup</string>
+  <key>ProgramArguments</key><array>
+    <string>/bin/sh</string><string>__REPO_PATH__/deploy/run-backup.sh</string><string>__PRIVATE_BACKUP_ENV_PATH__</string>
+  </array>
+  <key>StartCalendarInterval</key><dict>
+    <key>Hour</key><integer>__BACKUP_HOUR__</integer>
+    <key>Minute</key><integer>__BACKUP_MINUTE__</integer>
+  </dict>
+  <key>Umask</key><integer>63</integer>
+</dict></plist>

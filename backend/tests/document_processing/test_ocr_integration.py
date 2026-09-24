@@ -67,6 +67,21 @@ def test_fails_after_one_preprocessing_retry() -> None:
     assert captured.value.code == "OCR_QUALITY_TOO_LOW"
 
 
+def test_good_lines_do_not_hide_one_unreadable_line_in_the_average() -> None:
+    engine = FakeEngine([[line("React", 99), line("Unreadable", 20)], [line("React 경험", 95)]])
+    document = extract_image(image_bytes(), engine)
+    assert engine.calls == 2
+    assert document.pages[0].blocks[0].lines[0].text == "React 경험"
+
+
+def test_high_confidence_corruption_is_retried_and_rejected_if_it_persists() -> None:
+    engine = FakeEngine([[line("\ufffd\ufffd\ufffd", 99)], [line("\ufffd\ufffd\ufffd", 99)]])
+    with pytest.raises(DocumentExtractionError) as captured:
+        extract_image(image_bytes(), engine)
+    assert captured.value.code == "OCR_QUALITY_TOO_LOW"
+    assert engine.calls == 2
+
+
 def test_scanned_pdf_uses_full_page_ocr() -> None:
     source = pymupdf.open()
     source.new_page(width=200, height=100)
@@ -74,6 +89,43 @@ def test_scanned_pdf_uses_full_page_ocr() -> None:
     document = extract_pdf_with_ocr(source.tobytes(), FakeEngine([[line()]]))
 
     assert document.pages[0].blocks[0].lines[0].text == "React 2025.08"
+
+
+def test_corrupted_embedded_text_is_replaced_by_page_ocr() -> None:
+    source = pymupdf.open()
+    page = source.new_page(width=400, height=300)
+    page.insert_text((30, 40), "AI ÀÀ èÈ Ð¼ ÀÀ ÙÙ")
+    engine = FakeEngine([[line("AI 서비스 개발")]])
+    document = extract_pdf_with_ocr(source.tobytes(), engine)
+    result = document.pages[0].blocks[0].lines[0]
+    assert result.text == "AI 서비스 개발"
+    assert result.textSource == "ocr"
+    assert engine.calls == 1
+
+
+def test_ordinary_embedded_text_does_not_require_ocr() -> None:
+    source = pymupdf.open()
+    page = source.new_page(width=400, height=300)
+    page.insert_text((30, 40), "React TypeScript - café résumé 2025")
+    engine = FakeEngine([])
+    document = extract_pdf_with_ocr(source.tobytes(), engine)
+    assert document.pages[0].blocks[0].lines[0].textSource == "embedded"
+    assert engine.calls == 0
+
+
+def test_corrupted_actual_text_uses_visible_glyphs_before_ocr() -> None:
+    source = pymupdf.open()
+    page = source.new_page(width=400, height=300)
+    page.insert_text((30, 40), "AI development")
+    xref = page.get_contents()[0]
+    replacement = ("\ufeffAI\x00\x08 garbled").encode("utf-16-be").hex().encode()
+    source.update_stream(xref, b"/Span << /ActualText <" + replacement + b"> >> BDC\n" + source.xref_stream(xref) + b"\nEMC")
+    assert "development" not in page.get_text()
+    engine = FakeEngine([])
+    document = extract_pdf_with_ocr(source.tobytes(), engine)
+    assert document.pages[0].blocks[0].lines[0].text == "AI development"
+    assert document.pages[0].blocks[0].lines[0].textSource == "embedded"
+    assert engine.calls == 0
 
 
 def test_hybrid_pdf_keeps_embedded_text_and_adds_image_text() -> None:

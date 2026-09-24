@@ -1,0 +1,66 @@
+name: resume-agent
+services:
+  backend:
+    build:
+      context: ../backend
+      args:
+        APP_UID: ${RESUME_CONTAINER_UID:?Use run-containers.sh}
+        APP_GID: ${RESUME_CONTAINER_GID:?Use run-containers.sh}
+    platform: linux/arm64
+    image: resume-agent-backend:local
+    user: "${RESUME_CONTAINER_UID:?Use run-containers.sh}:${RESUME_CONTAINER_GID:?Use run-containers.sh}"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    # Startup goes through the SSD preflight; do not restart automatically after a host reboot.
+    restart: "no"
+    pids_limit: 256
+    cpus: 4
+    # Initial guardrails for the 16 GB host, not measured OCR requirements.
+    mem_limit: ${RESUME_CONTAINER_MEMORY:-6g}
+    memswap_limit: ${RESUME_CONTAINER_MEMORY:-6g}
+    shm_size: 256m
+    stop_grace_period: 45s
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=512m,mode=1777
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      RESUME_DEPLOYMENT_MODE: server
+      RESUME_DATA_DIR: /data
+      RESUME_KEY_FILE: /keys/fernet.key
+      RESUME_PUBLIC_ORIGIN: ${RESUME_PUBLIC_ORIGIN:?Set the public frontend HTTPS origin}
+      CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN:?Set the Access team domain}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD:?Set the Access audience}
+      RESUME_ACCESS_ASSERTION_HEADER: ${RESUME_ACCESS_ASSERTION_HEADER:-x-resume-user-jwt}
+      RESUME_OPERATOR_ID: ${RESUME_OPERATOR_ID:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+    volumes:
+      - type: bind
+        source: ${RESUME_DATA_DIR:?Set the existing external SSD data directory}
+        target: /data
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${RESUME_MODEL_CACHE:?Set the existing external SSD model cache}
+        target: /model-cache
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${RESUME_KEY_FILE:?Set the existing owner-only key file}
+        target: /keys/fernet.key
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"

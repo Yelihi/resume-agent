@@ -101,11 +101,12 @@ def test_success_partial_and_failed_share_one_response_contract() -> None:
     ]
     for outcome in (success, partial, failed):
         payload = outcome.response.model_dump(mode="json", by_alias=True)
-        assert set(payload) == {"status", "errors", "materialReviews", "results"}
+        assert set(payload) == {"status", "errors", "materialReviews", "results", "resolutionChecks", "experienceRecommendations"}
 
 
 def test_ai_output_json_schema_is_strict_at_every_object() -> None:
-    schema = AiReviewOutput.model_json_schema(by_alias=True)
+    from openai.lib._pydantic import to_strict_json_schema
+    schema = to_strict_json_schema(AiReviewOutput)
 
     def assert_strict(value):
         if isinstance(value, dict):

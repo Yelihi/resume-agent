@@ -1,164 +1,114 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { createTestRouter } from "./test/router";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-
+import { expect, it, vi } from "vitest";
 import { App } from "./App";
-import { ResumeAgentStore } from "./storage/store";
+import { IndexedDbWorkspaceRepository } from "./infrastructure/workspace/IndexedDbWorkspaceRepository";
+import { resumeInput } from "./test/fixtures";
 
-const resumeViewerSpy = vi.hoisted(() => vi.fn());
-vi.mock("./viewer/ResumeViewer", () => ({
-  ResumeViewer: (props: unknown) => {
-    resumeViewerSpy(props);
-    return null;
-  },
-}));
-
-const policy = {
-  maximumFileSizeBytes: { pdf: 20, image: 20, docx: 20, txt: 5 },
-  maximumDirectTextCharacters: 100,
-};
-const document = {
-  text: "경력 한 줄",
-  blocks: [
-    {
-      blockId: "f-b1",
-      lines: [{ lineId: "f-l1", text: "경력 한 줄", startOffset: 0, endOffset: 6 }],
-    },
-  ],
-};
-
-function setup(overrides = {}) {
-  const store = new ResumeAgentStore(`app-test-${crypto.randomUUID()}`);
-  const services = {
-    getValidationPolicy: vi.fn().mockResolvedValue(policy),
-    extractText: vi.fn().mockResolvedValue(document),
-    extractFile: vi.fn().mockResolvedValue({ kind: "flow", document }),
-    ...overrides,
-  };
-  render(<App store={store} services={services} />);
-  return { store, services };
+const policy = { maximumFileSizeBytes: { pdf: 20, image: 20, docx: 20, txt: 5 }, maximumDirectTextCharacters: 100 };
+function setup(path = "/contexts/new", overrides = {}) {
+  window.history.replaceState(null, "", path);
+  const store = new IndexedDbWorkspaceRepository(`input-${crypto.randomUUID()}`);
+  const services = { getValidationPolicy: vi.fn().mockResolvedValue(policy), extractText: vi.fn().mockResolvedValue(resumeInput().document), extractFile: vi.fn().mockResolvedValue({ kind: "flow", document: resumeInput().document }), ...overrides };
+  render(<App router={createTestRouter()} store={store} services={services} />); return { store, services };
 }
+it("creates an isolated context only after extraction succeeds", async () => {
+  const { store, services } = setup();
+  await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "프런트엔드 지원");
+  await userEvent.click(screen.getByRole("tab", { name: "직접 입력" }));
+  await userEvent.type(screen.getByLabelText("이력서 텍스트"), "경력 한 줄");
+  await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  expect(await screen.findByRole("button", { name: "이력서 검토하기" })).toBeEnabled();
+  expect(services.extractText).toHaveBeenCalledWith("경력 한 줄");
+  expect((await store.load()).contexts).toHaveLength(1);
+});
+it("rejects an oversized file before extraction", async () => {
+  const { store, services } = setup();
+  await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "A");
+  await userEvent.upload(screen.getByLabelText("이력서 파일"), new File(["123456"], "resume.txt", { type: "text/plain" }));
+  await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("파일 크기");
+  expect(services.extractFile).not.toHaveBeenCalled();
+  expect((await store.load()).contexts).toEqual([]);
+});
 
-describe("resume and material inputs", () => {
-  it("opens reference materials in a drawer and switches material types", async () => {
-    setup();
+it("requires extraction confirmation before saving a suspect resume", async () => {
+  const document = { ...resumeInput("확인할 문장").document, extraction: { status: "needs_review", confirmed: false, issues: [
+    { stage: "assessment", code: "LOW_OCR_CONFIDENCE", message: "원본과 비교해 주세요.", lineIds: ["f-l1"], recovered: false },
+  ] } };
+  const { store } = setup("/contexts/new", { extractText: vi.fn().mockResolvedValue(document) });
+  await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "확인 테스트");
+  await userEvent.click(screen.getByRole("tab", { name: "직접 입력" }));
+  await userEvent.type(screen.getByLabelText("이력서 텍스트"), "확인할 문장");
+  await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  expect(await screen.findByRole("dialog", { name: "추출 내용 확인" })).toHaveAttribute("open");
+  expect(screen.getByRole("button", { name: "확인 후 저장" })).toBeDisabled();
+  expect((await store.load()).contexts).toHaveLength(0);
+  await userEvent.click(screen.getByRole("checkbox", { name: "원본과 비교해 검토에 사용할 수 있음을 확인했습니다." }));
+  await userEvent.click(screen.getByRole("button", { name: "확인 후 저장" }));
+  await screen.findByRole("button", { name: "이력서 검토하기" });
+  expect((await store.load()).resumeVersions[0].document?.extraction?.confirmed).toBe(true);
+});
+it("selects a dropped resume and saves it through the existing extraction flow", async () => {
+  const { services } = setup();
+  await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "드롭 테스트");
+  const input = screen.getByLabelText("이력서 파일");
+  const area = input.closest("label")!;
+  const file = new File(["hello"], "resume.txt", { type: "text/plain" });
+  fireEvent.dragOver(input, { dataTransfer: { files: [file] } });
+  expect(area).toHaveClass("is-dragging");
+  fireEvent.drop(input, { dataTransfer: { files: [file] } });
+  expect(area).not.toHaveClass("is-dragging");
+  expect(screen.getByText("resume.txt")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  await screen.findByRole("button", { name: "이력서 검토하기" });
+  expect(services.extractFile).toHaveBeenCalledWith(file, "txt");
+});
+it("previews, edits and explicitly saves a material", async () => {
+  const { store } = setup("/materials");
+  await userEvent.click(await screen.findByRole("button", { name: "새 자료 등록" }));
+  expect(screen.getByRole("dialog", { name: "자료 미리보기" })).toHaveAttribute("open");
+  expect(screen.getByLabelText("자료 제목")).toHaveFocus();
+  await userEvent.type(screen.getByLabelText("자료 제목"), "공고 A");
+  await userEvent.type(screen.getByLabelText("자료 입력"), "React 경험");
+  await userEvent.click(screen.getByRole("button", { name: "추출 내용 확인" }));
+  await screen.findByLabelText("추출 내용");
+  expect((await store.load()).materials).toEqual([]);
+  await userEvent.type(screen.getByLabelText("추출 내용"), "과 테스트 경험");
+  await userEvent.click(screen.getByRole("button", { name: "자료 저장" }));
+  await waitFor(async () => expect((await store.load()).materialVersions[0].content).toBe("React 경험과 테스트 경험"));
+  expect(screen.queryByRole("dialog", { name: "자료 미리보기" })).not.toBeInTheDocument();
+});
+it("warns before abandoning an unsaved material draft", async () => {
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  const { store } = setup("/materials");
+  await userEvent.click(await screen.findByRole("button", { name: "새 자료 등록" }));
+  await userEvent.type(screen.getByLabelText("자료 제목"), "작성 중");
+  await userEvent.click(screen.getByRole("button", { name: "편집 취소" }));
+  expect(confirm).toHaveBeenCalled();
+  expect(screen.getByLabelText("자료 제목")).toHaveValue("작성 중");
+  expect((await store.load()).materials).toEqual([]);
+  fireEvent(screen.getByRole("dialog", { name: "자료 미리보기" }), new Event("cancel", { cancelable: true }));
+  expect(screen.getByLabelText("자료 제목")).toHaveValue("작성 중");
+  confirm.mockReturnValue(true);
+  fireEvent(screen.getByRole("dialog", { name: "자료 미리보기" }), new Event("cancel", { cancelable: true }));
+  expect(screen.queryByRole("dialog", { name: "자료 미리보기" })).not.toBeInTheDocument();
+  confirm.mockRestore();
+});
 
-    const trigger = await screen.findByRole("button", { name: /검토 자료/ });
-    expect(screen.queryByRole("dialog", { name: "검토 자료" })).not.toBeInTheDocument();
-
-    await userEvent.click(trigger);
-    expect(screen.getByRole("dialog", { name: "검토 자료" })).toBeInTheDocument();
-    expect(screen.getByLabelText("채용 공고 입력")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("tab", { name: "회사 정보" }));
-    expect(screen.getByLabelText("회사 소개 자료 입력")).toBeInTheDocument();
-    expect(screen.queryByLabelText("채용 공고 입력")).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "검토 자료 닫기" }));
-    expect(screen.queryByRole("dialog", { name: "검토 자료" })).not.toBeInTheDocument();
-  });
-
-  it("keeps file and direct text resume inputs mutually exclusive", async () => {
-    setup();
-    await screen.findByText("이력서 원본");
-
-    expect(screen.getByLabelText("이력서 파일")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("tab", { name: "직접 입력" }));
-
-    expect(screen.queryByLabelText("이력서 파일")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("이력서 텍스트")).toBeInTheDocument();
-  });
-
-  it("normalizes direct text and shows a ready resume", async () => {
-    const { services } = setup();
-    await userEvent.click(await screen.findByRole("tab", { name: "직접 입력" }));
-    await userEvent.type(screen.getByLabelText("이력서 텍스트"), "경력 한 줄");
-    await userEvent.click(screen.getByRole("button", { name: "이력서 적용" }));
-
-    await screen.findByText(/변환 완료/);
-    expect(services.extractText).toHaveBeenCalledWith("경력 한 줄");
-  });
-
-  it("rejects an oversized file before extraction", async () => {
-    const extractFile = vi.fn();
-    setup({ extractFile });
-    const input = await screen.findByLabelText("이력서 파일");
-    await waitFor(() => expect(input).toBeEnabled());
-
-    await userEvent.upload(input, new File(["123456"], "resume.txt", { type: "text/plain" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("파일 크기");
-    expect(extractFile).not.toHaveBeenCalled();
-  });
-
-  it("retries the validation policy when a file is selected after startup recovery", async () => {
-    const getValidationPolicy = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("server unavailable"))
-      .mockResolvedValue(policy);
-    const { services } = setup({ getValidationPolicy });
-
-    await screen.findByRole("dialog", { name: "요청 오류" });
-    await userEvent.click(screen.getByRole("button", { name: "오류 팝업 닫기" }));
-    const input = screen.getByLabelText("이력서 파일");
-    expect(input).toBeEnabled();
-
-    await userEvent.upload(input, new File(["1"], "resume.txt", { type: "text/plain" }));
-
-    await screen.findByText(/변환 완료/);
-    expect(getValidationPolicy).toHaveBeenCalledTimes(2);
-    expect(services.extractFile).toHaveBeenCalled();
-  });
-
-  it("accumulates company URLs and warns without blocking", async () => {
-    setup();
-    await userEvent.click(await screen.findByRole("button", { name: /검토 자료/ }));
-    await userEvent.click(screen.getByRole("tab", { name: "회사 정보" }));
-    const input = await screen.findByLabelText("회사 소개 자료 입력");
-
-    await userEvent.type(input, "https://example.com/about");
-    await userEvent.click(screen.getByRole("button", { name: "회사 자료 추가" }));
-    await userEvent.type(input, "https://example.com/culture");
-    await userEvent.click(screen.getByRole("button", { name: "회사 자료 추가" }));
-
-    expect(screen.getByText("https://example.com/about")).toBeInTheDocument();
-    expect(screen.getByText("https://example.com/culture")).toBeInTheDocument();
-    expect(screen.getByText(/분석 깊이가 낮아질 수 있습니다/)).toBeInTheDocument();
-    expect(input).toHaveValue("");
-  });
-
-  it("does not recreate the resume image when a material is added", async () => {
-    resumeViewerSpy.mockClear();
-    setup();
-    const fileInput = await screen.findByLabelText("이력서 파일");
-    await waitFor(() => expect(fileInput).toBeEnabled());
-    await userEvent.upload(fileInput, new File(["1"], "resume.txt", { type: "text/plain" }));
-    await screen.findByText(/변환 완료/);
-    await waitFor(() => expect(resumeViewerSpy).toHaveBeenCalled());
-    const originalBefore = resumeViewerSpy.mock.calls.at(-1)?.[0].resume.original;
-
-    await userEvent.click(screen.getByRole("button", { name: /검토 자료/ }));
-    const input = screen.getByLabelText("채용 공고 입력");
-    await userEvent.type(input, "React 개발자 채용");
-    await userEvent.click(screen.getByRole("button", { name: "채용 공고 추가" }));
-
-    expect(await screen.findByText("React 개발자 채용")).toBeInTheDocument();
-    const originalAfter = resumeViewerSpy.mock.calls.at(-1)?.[0].resume.original;
-    expect(originalAfter).toBe(originalBefore);
-  });
-
-  it("requires confirmation before deleting a material", async () => {
-    const { store } = setup();
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    await userEvent.click(await screen.findByRole("button", { name: /검토 자료/ }));
-    const input = await screen.findByLabelText("채용 공고 입력");
-    await userEvent.type(input, "React 경력자를 찾습니다.");
-    await userEvent.click(screen.getByRole("button", { name: "채용 공고 추가" }));
-
-    await userEvent.click(screen.getByRole("button", { name: "React 경력자를 찾습니다. 삭제" }));
-
-    expect(confirm).toHaveBeenCalled();
-    expect((await store.load()).materials).toHaveLength(1);
-    confirm.mockRestore();
-  });
+it("keeps a revision and the existing original when extraction fails", async () => {
+  const store = new IndexedDbWorkspaceRepository(`revision-${crypto.randomUUID()}`);
+  const id = await store.createContext("A", resumeInput());
+  window.history.replaceState(null, "", `/contexts/${id}/upload`);
+  const services = { getValidationPolicy: vi.fn().mockResolvedValue(policy), extractText: vi.fn().mockRejectedValue(new Error("변환 실패")) };
+  render(<App router={createTestRouter()} store={store} services={services} />);
+  await userEvent.click(await screen.findByRole("tab", { name: "직접 입력" }));
+  await userEvent.type(screen.getByLabelText("이력서 텍스트"), "새 수정본");
+  await userEvent.click(screen.getByRole("button", { name: "수정본 저장" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("변환 실패");
+  expect(screen.getByLabelText("이력서 텍스트")).toHaveValue("새 수정본");
+  const state = await store.load();
+  expect(state.resumeVersions).toHaveLength(1);
+  expect(state.resumeVersions[0].original).toBe(resumeInput().original);
 });

@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from functools import lru_cache
 from io import BytesIO
-from statistics import mean
 from typing import Protocol
 
 import pymupdf
@@ -10,8 +9,10 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from .errors import DocumentExtractionError
 from .models import DocumentPage, NormalizedBBox, PageBlock, PageDocument, PageLine
 from .pdf import extract_embedded_blocks
+from .quality import assess_document, looks_corrupted as _looks_corrupted
+from .models import ExtractionIssue
 
-MINIMUM_AVERAGE_CONFIDENCE = 50.0
+MINIMUM_LINE_CONFIDENCE = 50.0
 UNCERTAIN_LINE_CONFIDENCE = 85.0
 
 
@@ -61,7 +62,10 @@ class PaddleOcrEngine:
 
 def _has_usable_text(lines: list[RawOcrLine]) -> bool:
     usable = [line for line in lines if line.text.strip()]
-    return bool(usable) and mean(line.confidence for line in usable) >= MINIMUM_AVERAGE_CONFIDENCE
+    return bool(usable) and all(
+        line.confidence >= MINIMUM_LINE_CONFIDENCE and not _looks_corrupted(line.text)
+        for line in usable
+    )
 
 
 def _preprocess(image: Image.Image) -> Image.Image:
@@ -160,7 +164,7 @@ def extract_image(data: bytes, engine: OcrEngine | None = None) -> PageDocument:
         raise DocumentExtractionError("CORRUPT_IMAGE", "손상되었거나 읽을 수 없는 이미지입니다.") from error
     raw, used_image = _recognize(image, engine or PaddleOcrEngine())
     lines = _ocr_page_lines(raw, used_image, 1)
-    return PageDocument(pages=[_renumber(1, [(_union_bbox(lines), lines)])])
+    return assess_document(PageDocument(pages=[_renumber(1, [(_union_bbox(lines), lines)])]), [ExtractionIssue(stage="recovery", code="IMAGE_OCR", message="이미지에서 글자를 인식했습니다.", pageNumber=1, recovered=True)])
 
 
 def _render(page: pymupdf.Page, clip: pymupdf.Rect | None = None) -> Image.Image:
@@ -180,8 +184,15 @@ def extract_pdf_with_ocr(data: bytes, engine: OcrEngine | None = None) -> PageDo
         if source.needs_pass:
             raise DocumentExtractionError("ENCRYPTED_PDF", "암호화된 PDF는 사용할 수 없습니다.")
         pages = []
+        issues = []
         for page_number, page in enumerate(source, start=1):
             embedded_blocks = extract_embedded_blocks(page, page_number)
+            suspect = [line for block in embedded_blocks for line in block.lines if _looks_corrupted(line.text)]
+            if suspect:
+                embedded_blocks = extract_embedded_blocks(page, page_number, ignore_actual_text=True)
+                issues.extend(ExtractionIssue(stage="recovery", code="DISPLAY_TEXT_RETRY", message="깨짐이 의심되어 표시 문자로 다시 추출했습니다.", pageNumber=page_number, bbox=line.bbox, recovered=True) for line in suspect)
+            if any(_looks_corrupted(line.text) for block in embedded_blocks for line in block.lines):
+                embedded_blocks = []
             embedded_lines = [line for block in embedded_blocks for line in block.lines]
             groups = [(block.bbox, block.lines) for block in embedded_blocks]
             if not embedded_blocks:
@@ -189,10 +200,12 @@ def extract_pdf_with_ocr(data: bytes, engine: OcrEngine | None = None) -> PageDo
                 raw, used_image = _recognize(image, engine)
                 lines = _ocr_page_lines(raw, used_image, page_number)
                 groups.append((_union_bbox(lines), lines))
+                issues.append(ExtractionIssue(stage="recovery", code="PAGE_OCR", message="페이지 이미지에서 글자를 다시 인식했습니다.", pageNumber=page_number, recovered=True))
             else:
                 seen_rects: set[tuple[float, float, float, float]] = set()
                 for image_info in page.get_images(full=True):
                     for clip in page.get_image_rects(image_info[0]):
+                        clip = clip & page.rect
                         key = tuple(clip)
                         if key in seen_rects or clip.is_empty:
                             continue
@@ -201,6 +214,7 @@ def extract_pdf_with_ocr(data: bytes, engine: OcrEngine | None = None) -> PageDo
                         try:
                             raw, used_image = _recognize(rendered, engine)
                         except DocumentExtractionError:
+                            issues.append(ExtractionIssue(stage="assessment", code="IMAGE_REGION_UNREADABLE", message="이미지 영역의 글자를 읽지 못했습니다. 장식 이미지인지, 필요한 내용이 누락됐는지 확인해 주세요.", pageNumber=page_number, bbox=NormalizedBBox(x=clip.x0/page.rect.width, y=clip.y0/page.rect.height, width=clip.width/page.rect.width, height=clip.height/page.rect.height)))
                             continue
                         lines = _ocr_page_lines(
                             raw,
@@ -215,4 +229,4 @@ def extract_pdf_with_ocr(data: bytes, engine: OcrEngine | None = None) -> PageDo
             pages.append(_renumber(page_number, groups))
     if not pages:
         raise DocumentExtractionError("NO_EXTRACTABLE_TEXT", "PDF에 페이지가 없습니다.")
-    return PageDocument(pages=pages)
+    return assess_document(PageDocument(pages=pages), issues)

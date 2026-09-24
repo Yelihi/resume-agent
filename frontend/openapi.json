@@ -562,6 +562,484 @@
         }
       }
     },
+    "/api/materials/preview": {
+      "post": {
+        "summary": "Preview",
+        "operationId": "preview_api_materials_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/experiences/write": {
+      "post": {
+        "summary": "Write Experience",
+        "operationId": "write_experience_api_experiences_write_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__experience__api__WritingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/experiences/draft": {
+      "post": {
+        "summary": "Draft Experience",
+        "operationId": "draft_experience_api_experiences_draft_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingResult"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/experiences/metadata": {
+      "post": {
+        "summary": "Generate Metadata",
+        "operationId": "generate_metadata_api_experiences_metadata_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataResult"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Account",
+        "operationId": "account_api_account_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/openai-key": {
+      "put": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Save Key",
+        "operationId": "save_key_api_account_openai_key_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Delete Key",
+        "operationId": "delete_key_api_account_openai_key_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/workspace": {
+      "get": {
+        "summary": "Load Workspace",
+        "operationId": "load_workspace_api_workspace_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/commands": {
+      "post": {
+        "summary": "Workspace Command",
+        "operationId": "workspace_command_api_workspace_commands_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/import": {
+      "post": {
+        "summary": "Import Local Workspace",
+        "operationId": "import_local_workspace_api_workspace_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/import/{import_id}": {
+      "get": {
+        "summary": "Import Status",
+        "operationId": "import_status_api_workspace_import__import_id__get",
+        "parameters": [
+          {
+            "name": "import_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Import Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files": {
+      "post": {
+        "summary": "Upload File",
+        "operationId": "upload_file_api_files_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_api_files_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{file_id}": {
+      "get": {
+        "summary": "Download File",
+        "operationId": "download_file_api_files__file_id__get",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "File Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Unused File",
+        "operationId": "delete_unused_file_api_files__file_id__delete",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "File Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/operations/backup": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Backup Status",
+        "operationId": "backup_status_api_operations_backup_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -587,8 +1065,67 @@
   },
   "components": {
     "schemas": {
+      "AccountResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "isOperator": {
+            "type": "boolean",
+            "title": "Isoperator"
+          },
+          "hasOpenAiKey": {
+            "type": "boolean",
+            "title": "Hasopenaikey"
+          },
+          "maskedOpenAiKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maskedopenaikey"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "mode",
+          "isOperator",
+          "hasOpenAiKey",
+          "maskedOpenAiKey"
+        ],
+        "title": "AccountResponse"
+      },
       "AiReviewOutput": {
         "properties": {
+          "experienceRecommendations": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienceRecommendation"
+            },
+            "type": "array",
+            "title": "Experiencerecommendations"
+          },
+          "resolutionChecks": {
+            "items": {
+              "$ref": "#/components/schemas/ResolutionCheck"
+            },
+            "type": "array",
+            "title": "Resolutionchecks"
+          },
           "materialReviews": {
             "items": {
               "$ref": "#/components/schemas/MaterialReviewDTO"
@@ -611,6 +1148,57 @@
           "results"
         ],
         "title": "AiReviewOutput"
+      },
+      "BackupStatus": {
+        "properties": {
+          "lastAttemptAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastattemptat"
+          },
+          "lastSuccessAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastsuccessat"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "BACKUP_NOT_RUN",
+                  "BACKUP_STATUS_UNAVAILABLE",
+                  "BACKUP_OR_RETENTION_FAILED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lastAttemptAt",
+          "lastSuccessAt",
+          "error"
+        ],
+        "title": "BackupStatus"
       },
       "Body_docx_api_resumes_extract_docx_post": {
         "properties": {
@@ -668,6 +1256,20 @@
         ],
         "title": "Body_txt_api_resumes_extract_txt_post"
       },
+      "Body_upload_file_api_files_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_file_api_files_post"
+      },
       "CancelAccepted": {
         "properties": {
           "runId": {
@@ -686,6 +1288,48 @@
           "cancelRequested"
         ],
         "title": "CancelAccepted"
+      },
+      "Command": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "createContext",
+              "addResumeVersion",
+              "saveMaterial",
+              "attachMaterial",
+              "detachMaterial",
+              "deleteMaterial",
+              "deleteContext",
+              "saveExperience",
+              "saveExperienceDocument",
+              "deleteExperienceDocument",
+              "setSuggestionFeedback",
+              "saveReviewFeedback",
+              "setContextExperiences",
+              "prepareReview",
+              "prepareRetry",
+              "restoreRecord",
+              "clearActiveRun",
+              "registerRun",
+              "completeReview"
+            ],
+            "title": "Operation"
+          },
+          "args": {
+            "items": {},
+            "type": "array",
+            "maxItems": 4,
+            "title": "Args"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "operation",
+          "args"
+        ],
+        "title": "Command"
       },
       "CompletedModules": {
         "properties": {
@@ -724,6 +1368,84 @@
         ],
         "title": "CompletedModules"
       },
+      "Context": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "createdAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Createdat"
+          },
+          "latestVersionId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Latestversionid"
+          },
+          "latestReviewId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latestreviewid"
+          },
+          "lastAttemptId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastattemptid"
+          },
+          "selectedExperienceIds": {
+            "items": {
+              "type": "string",
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Selectedexperienceids"
+          },
+          "userFeedback": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Userfeedback"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "createdAt",
+          "latestVersionId",
+          "userFeedback"
+        ],
+        "title": "Context"
+      },
       "ContextAnalysis": {
         "properties": {
           "summary": {
@@ -737,6 +1459,13 @@
             },
             "type": "array",
             "title": "Evidence"
+          },
+          "materialSummaries": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialSummary"
+            },
+            "type": "array",
+            "title": "Materialsummaries"
           }
         },
         "additionalProperties": false,
@@ -766,6 +1495,117 @@
           "statement"
         ],
         "title": "ContextEvidence"
+      },
+      "ContextMaterial": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 241,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "contextId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Contextid"
+          },
+          "materialId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Materialid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "contextId",
+          "materialId"
+        ],
+        "title": "ContextMaterial"
+      },
+      "ContextRefs": {
+        "properties": {
+          "contextId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Contextid"
+          },
+          "resumeVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Resumeversionid"
+          },
+          "materialVersions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Materialversions"
+          },
+          "previousReviewId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previousreviewid"
+          },
+          "feedback": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackReference"
+            },
+            "type": "array",
+            "title": "Feedback"
+          },
+          "resolved": {
+            "items": {
+              "$ref": "#/components/schemas/ResolvedMemory"
+            },
+            "type": "array",
+            "title": "Resolved"
+          },
+          "userFeedback": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userfeedback"
+          },
+          "experiences": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienceCandidate"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Experiences"
+          },
+          "selectedExperienceIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Selectedexperienceids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "contextId",
+          "resumeVersionId"
+        ],
+        "title": "ContextRefs"
       },
       "DirectTextRequest": {
         "properties": {
@@ -804,6 +1644,410 @@
           "blocks"
         ],
         "title": "DocumentPage"
+      },
+      "DraftInput": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title"
+          },
+          "period": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Period"
+          },
+          "markdown": {
+            "type": "string",
+            "maxLength": 60000,
+            "title": "Markdown",
+            "default": ""
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Sources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "period"
+        ],
+        "title": "DraftInput"
+      },
+      "Experience": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title"
+          },
+          "period": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Period"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienceSource"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Sources"
+          },
+          "markdown": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markdown"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 12000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Revision"
+          },
+          "createdAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Updatedat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "period",
+          "sources",
+          "id",
+          "revision",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "Experience"
+      },
+      "ExperienceCandidate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "period": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Period"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Revision"
+          },
+          "markdown": {
+            "type": "string",
+            "maxLength": 60000,
+            "minLength": 1,
+            "title": "Markdown"
+          },
+          "metadata": {
+            "type": "string",
+            "maxLength": 12000,
+            "title": "Metadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "period",
+          "revision",
+          "markdown",
+          "metadata"
+        ],
+        "title": "ExperienceCandidate"
+      },
+      "ExperienceInput": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title"
+          },
+          "period": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Period"
+          },
+          "markdown": {
+            "type": "string",
+            "maxLength": 60000,
+            "title": "Markdown",
+            "default": ""
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Sources"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Revision"
+          },
+          "metadata": {
+            "type": "string",
+            "maxLength": 12000,
+            "title": "Metadata",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "period",
+          "id",
+          "revision"
+        ],
+        "title": "ExperienceInput"
+      },
+      "ExperienceRecommendation": {
+        "properties": {
+          "experienceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Experienceid"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "include",
+              "suggest",
+              "omit"
+            ],
+            "title": "Decision"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "jobEvidence": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialEvidence"
+            },
+            "type": "array",
+            "title": "Jobevidence"
+          },
+          "resumeBullets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Resumebullets"
+          },
+          "placement": {
+            "type": "string",
+            "title": "Placement"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "experienceId",
+          "decision",
+          "reason",
+          "jobEvidence",
+          "resumeBullets",
+          "placement"
+        ],
+        "title": "ExperienceRecommendation"
+      },
+      "ExperienceSnapshot": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title"
+          },
+          "period": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Period"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienceSource"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Sources"
+          },
+          "markdown": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markdown"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 12000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "period",
+          "sources",
+          "id",
+          "revision"
+        ],
+        "title": "ExperienceSnapshot"
+      },
+      "ExperienceSource": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "note",
+              "link",
+              "file"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Name"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Text"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "original": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Createdat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "text",
+          "createdAt"
+        ],
+        "title": "ExperienceSource"
       },
       "ExtractFlowDocumentResponse": {
         "properties": {
@@ -846,6 +2090,169 @@
           "errors"
         ],
         "title": "ExtractPageDocumentResponse"
+      },
+      "ExtractionIssue": {
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "assessment",
+              "recovery"
+            ],
+            "title": "Stage"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "pageNumber": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagenumber"
+          },
+          "lineIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lineids"
+          },
+          "bbox": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NormalizedBBox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recovered": {
+            "type": "boolean",
+            "title": "Recovered",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stage",
+          "code",
+          "message"
+        ],
+        "title": "ExtractionIssue"
+      },
+      "ExtractionReport": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "recovered",
+              "needs_review"
+            ],
+            "title": "Status"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractionIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ExtractionReport"
+      },
+      "FeedbackReference": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "contextId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Contextid"
+          },
+          "reviewId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Reviewid"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "resolve",
+              "skip"
+            ],
+            "title": "Decision"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "contextId",
+          "reviewId",
+          "decision",
+          "rating"
+        ],
+        "title": "FeedbackReference"
+      },
+      "FileReference": {
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Fileid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "fileId"
+        ],
+        "title": "FileReference"
       },
       "FileSizeLimits": {
         "properties": {
@@ -918,6 +2325,16 @@
             "type": "array",
             "minItems": 1,
             "title": "Blocks"
+          },
+          "extraction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExtractionReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -982,6 +2399,16 @@
                 "type": "null"
               }
             ]
+          },
+          "reviewContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -1004,6 +2431,248 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "ImportRequest": {
+        "properties": {
+          "importId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Importid"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/ImportedWorkspace"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "importId",
+          "workspace"
+        ],
+        "title": "ImportRequest"
+      },
+      "ImportedWorkspace": {
+        "properties": {
+          "contexts": {
+            "items": {
+              "$ref": "#/components/schemas/Context"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Contexts"
+          },
+          "resumeVersions": {
+            "items": {
+              "$ref": "#/components/schemas/ResumeVersion"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Resumeversions"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/Material"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Materials"
+          },
+          "materialVersions": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialVersion"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Materialversions"
+          },
+          "contextMaterials": {
+            "items": {
+              "$ref": "#/components/schemas/ContextMaterial"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Contextmaterials"
+          },
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/Review"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Reviews"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionEntry"
+            },
+            "type": "array",
+            "maxItems": 50000,
+            "title": "Suggestions"
+          },
+          "reviewMaterials": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewMaterial"
+            },
+            "type": "array",
+            "maxItems": 50000,
+            "title": "Reviewmaterials"
+          },
+          "experiences": {
+            "items": {
+              "$ref": "#/components/schemas/Experience"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Experiences"
+          },
+          "experienceDocuments": {
+            "items": {
+              "$ref": "#/components/schemas/SavedExperienceDocument"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Experiencedocuments"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "contexts",
+          "resumeVersions",
+          "materials",
+          "materialVersions",
+          "contextMaterials",
+          "reviews",
+          "suggestions",
+          "reviewMaterials",
+          "experiences",
+          "experienceDocuments"
+        ],
+        "title": "ImportedWorkspace"
+      },
+      "KeyInput": {
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 16,
+            "format": "password",
+            "title": "Apikey",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "apiKey"
+        ],
+        "title": "KeyInput"
+      },
+      "Material": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "materialType": {
+            "type": "string",
+            "enum": [
+              "company",
+              "jobPosting"
+            ],
+            "title": "Materialtype"
+          },
+          "currentVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentversionid"
+          },
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaterialDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "materialType",
+          "currentVersionId",
+          "deleted"
+        ],
+        "title": "Material"
+      },
+      "MaterialDraft": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "materialType": {
+            "type": "string",
+            "enum": [
+              "company",
+              "jobPosting"
+            ],
+            "title": "Materialtype"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Content"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Source"
+          },
+          "original": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileReference"
+              },
+              {
+                "type": "string",
+                "maxLength": 100000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "materialType",
+          "content",
+          "source"
+        ],
+        "title": "MaterialDraft"
+      },
       "MaterialEvidence": {
         "properties": {
           "sourceId": {
@@ -1024,6 +2693,84 @@
           "consideredPoint"
         ],
         "title": "MaterialEvidence"
+      },
+      "MaterialInput": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Content"
+          },
+          "materialType": {
+            "type": "string",
+            "enum": [
+              "company",
+              "jobPosting"
+            ],
+            "title": "Materialtype"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "materialType"
+        ],
+        "title": "MaterialInput"
+      },
+      "MaterialPreviewRequest": {
+        "properties": {
+          "materialType": {
+            "$ref": "#/components/schemas/MaterialType"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "materialType",
+          "content"
+        ],
+        "title": "MaterialPreviewRequest"
+      },
+      "MaterialPreviewResponse": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content",
+          "sources"
+        ],
+        "title": "MaterialPreviewResponse"
       },
       "MaterialReviewDTO": {
         "properties": {
@@ -1059,6 +2806,28 @@
         ],
         "title": "MaterialReviewDTO"
       },
+      "MaterialSummary": {
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Sourceid"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Summary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sourceId",
+          "summary"
+        ],
+        "title": "MaterialSummary"
+      },
       "MaterialType": {
         "type": "string",
         "enum": [
@@ -1066,6 +2835,142 @@
           "jobPosting"
         ],
         "title": "MaterialType"
+      },
+      "MaterialVersion": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "materialType": {
+            "type": "string",
+            "enum": [
+              "company",
+              "jobPosting"
+            ],
+            "title": "Materialtype"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Content"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Source"
+          },
+          "original": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileReference"
+              },
+              {
+                "type": "string",
+                "maxLength": 100000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "materialId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Materialid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "createdAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Createdat"
+          },
+          "legacyUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacyurl"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "materialType",
+          "content",
+          "source",
+          "id",
+          "materialId",
+          "version",
+          "createdAt"
+        ],
+        "title": "MaterialVersion"
+      },
+      "MetadataInput": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title"
+          },
+          "period": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Period"
+          },
+          "markdown": {
+            "type": "string",
+            "maxLength": 60000,
+            "minLength": 1,
+            "title": "Markdown"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "period",
+          "markdown"
+        ],
+        "title": "MetadataInput"
+      },
+      "MetadataResult": {
+        "properties": {
+          "metadata": {
+            "type": "string",
+            "maxLength": 12000,
+            "minLength": 1,
+            "title": "Metadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metadata"
+        ],
+        "title": "MetadataResult"
       },
       "ModuleErrorDTO": {
         "properties": {
@@ -1285,6 +3190,16 @@
             "type": "array",
             "minItems": 1,
             "title": "Pages"
+          },
+          "extraction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExtractionReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -1357,6 +3272,16 @@
                 "type": "null"
               }
             ]
+          },
+          "reviewContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -1379,6 +3304,7 @@
             "anyOf": [
               {
                 "type": "string",
+                "maxLength": 2000,
                 "minLength": 1
               },
               {
@@ -1449,6 +3375,96 @@
         ],
         "title": "ReferenceMaterial"
       },
+      "ResolutionCheck": {
+        "properties": {
+          "suggestionId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Suggestionid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "resolved",
+              "notApplied",
+              "uncertain"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionLocation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "suggestionId",
+          "status",
+          "reason"
+        ],
+        "title": "ResolutionCheck"
+      },
+      "ResolvedMemory": {
+        "properties": {
+          "suggestionId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Suggestionid"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Quote"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "suggestionId",
+          "quote",
+          "reason"
+        ],
+        "title": "ResolvedMemory"
+      },
+      "ResumeInput": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "ResumeInput"
+      },
       "ResumeValidationPolicy": {
         "properties": {
           "maximumFileSizeBytes": {
@@ -1467,6 +3483,110 @@
           "maximumDirectTextCharacters"
         ],
         "title": "ResumeValidationPolicy"
+      },
+      "ResumeVersion": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "contextId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Contextid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Version"
+          },
+          "createdAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Createdat"
+          },
+          "inputType": {
+            "type": "string",
+            "enum": [
+              "file",
+              "text"
+            ],
+            "title": "Inputtype"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Displayname"
+          },
+          "original": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileReference"
+              },
+              {
+                "type": "string",
+                "maxLength": 100000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "extracting",
+              "ready",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "documentKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "page",
+                  "flow"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentkind"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageDocument"
+              },
+              {
+                "$ref": "#/components/schemas/FlowDocument"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "contextId",
+          "version",
+          "createdAt",
+          "inputType",
+          "displayName",
+          "status"
+        ],
+        "title": "ResumeVersion"
       },
       "RetryRequest": {
         "properties": {
@@ -1488,12 +3608,292 @@
         ],
         "title": "RetryRequest"
       },
+      "Review": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "contextId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Contextid"
+          },
+          "resumeVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resumeversionid"
+          },
+          "createdAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Createdat"
+          },
+          "input": {
+            "$ref": "#/components/schemas/ContextRefs"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleErrorDTO"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "materialReviews": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialReviewDTO"
+            },
+            "type": "array",
+            "title": "Materialreviews"
+          },
+          "resolutionChecks": {
+            "items": {
+              "$ref": "#/components/schemas/ResolutionCheck"
+            },
+            "type": "array",
+            "title": "Resolutionchecks"
+          },
+          "resultIds": {
+            "items": {
+              "type": "string",
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Resultids"
+          },
+          "suggestionIds": {
+            "items": {
+              "type": "string",
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Suggestionids"
+          },
+          "experienceRecommendations": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienceRecommendation"
+            },
+            "type": "array",
+            "title": "Experiencerecommendations"
+          },
+          "modules": {
+            "$ref": "#/components/schemas/ReviewModules"
+          },
+          "finalErrors": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleErrorDTO"
+            },
+            "type": "array",
+            "title": "Finalerrors"
+          },
+          "finalFailed": {
+            "type": "boolean",
+            "title": "Finalfailed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "contextId",
+          "resumeVersionId",
+          "createdAt",
+          "input",
+          "status",
+          "errors",
+          "materialReviews",
+          "resolutionChecks",
+          "resultIds",
+          "suggestionIds",
+          "modules",
+          "finalErrors",
+          "finalFailed"
+        ],
+        "title": "Review"
+      },
+      "ReviewContext": {
+        "properties": {
+          "contextId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Contextid"
+          },
+          "resumeVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Resumeversionid"
+          },
+          "materialVersions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Materialversions"
+          },
+          "previousReviewId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previousreviewid"
+          },
+          "feedback": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionFeedback"
+            },
+            "type": "array",
+            "title": "Feedback"
+          },
+          "resolved": {
+            "items": {
+              "$ref": "#/components/schemas/ResolvedMemory"
+            },
+            "type": "array",
+            "title": "Resolved"
+          },
+          "userFeedback": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userfeedback"
+          },
+          "experiences": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienceCandidate"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Experiences"
+          },
+          "selectedExperienceIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Selectedexperienceids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "contextId",
+          "resumeVersionId"
+        ],
+        "title": "ReviewContext"
+      },
+      "ReviewMaterial": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 241,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "reviewId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Reviewid"
+          },
+          "materialVersionId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Materialversionid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "reviewId",
+          "materialVersionId"
+        ],
+        "title": "ReviewMaterial"
+      },
+      "ReviewModules": {
+        "properties": {
+          "spellCheck": {
+            "$ref": "#/components/schemas/ModuleResult_list_SpellDiagnostic__"
+          },
+          "companyContextAnalysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModuleResult_ContextAnalysis_"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "jobPostingAnalysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModuleResult_ContextAnalysis_"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "spellCheck"
+        ],
+        "title": "ReviewModules"
+      },
       "ReviewRecord": {
         "properties": {
           "runId": {
             "type": "string",
             "minLength": 1,
             "title": "Runid"
+          },
+          "reviewContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -1550,6 +3950,20 @@
       },
       "ReviewResponse": {
         "properties": {
+          "experienceRecommendations": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienceRecommendation"
+            },
+            "type": "array",
+            "title": "Experiencerecommendations"
+          },
+          "resolutionChecks": {
+            "items": {
+              "$ref": "#/components/schemas/ResolutionCheck"
+            },
+            "type": "array",
+            "title": "Resolutionchecks"
+          },
           "status": {
             "$ref": "#/components/schemas/ReviewStatus"
           },
@@ -1609,6 +4023,198 @@
         ],
         "title": "RunAccepted"
       },
+      "SavedExperienceDocument": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "contextId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Contextid"
+          },
+          "experienceId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Experienceid"
+          },
+          "input": {
+            "$ref": "#/components/schemas/app__workspace__models__WritingInput"
+          },
+          "markdown": {
+            "type": "string",
+            "maxLength": 60000,
+            "minLength": 1,
+            "title": "Markdown"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Summary"
+          },
+          "questions": {
+            "items": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Questions"
+          },
+          "sourceNotes": {
+            "items": {
+              "$ref": "#/components/schemas/SourceNote-Input"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Sourcenotes"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Revision"
+          },
+          "createdAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Updatedat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "contextId",
+          "experienceId",
+          "input",
+          "markdown",
+          "summary",
+          "questions",
+          "sourceNotes",
+          "revision",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "SavedExperienceDocument"
+      },
+      "Source": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "note",
+              "link",
+              "file"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Name"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Text"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "createdAt": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Createdat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "text",
+          "createdAt"
+        ],
+        "title": "Source"
+      },
+      "SourceNote-Input": {
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Sourceid"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Text"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sourceId",
+          "text",
+          "verified"
+        ],
+        "title": "SourceNote"
+      },
+      "SourceNote-Output": {
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "title": "Sourceid"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sourceId",
+          "text",
+          "verified"
+        ],
+        "title": "SourceNote"
+      },
       "SpellDiagnostic": {
         "properties": {
           "lineId": {
@@ -1651,19 +4257,58 @@
             "title": "Modulekey"
           },
           "record": {
-            "$ref": "#/components/schemas/ReviewRecord"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewid"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "moduleKey",
-          "record"
+          "moduleKey"
         ],
         "title": "StoredRetryRequest"
       },
       "SuggestionDTO": {
         "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "previousSuggestionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previoussuggestionid"
+          },
           "수정포인트위치": {
             "$ref": "#/components/schemas/SuggestionLocation"
           },
@@ -1724,6 +4369,145 @@
           "실제 수정 예시"
         ],
         "title": "SuggestionDTO"
+      },
+      "SuggestionEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "contextId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Contextid"
+          },
+          "reviewId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Reviewid"
+          },
+          "resumeVersionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resumeversionid"
+          },
+          "content": {
+            "$ref": "#/components/schemas/SuggestionDTO"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "open",
+              "resolve",
+              "skip"
+            ],
+            "title": "Decision"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResolutionCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "contextId",
+          "reviewId",
+          "resumeVersionId",
+          "content",
+          "rating",
+          "decision"
+        ],
+        "title": "SuggestionEntry"
+      },
+      "SuggestionFeedback": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id"
+          },
+          "contextId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Contextid"
+          },
+          "reviewId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reviewid"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "resolve",
+              "skip"
+            ],
+            "title": "Decision"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/SuggestionDTO"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "contextId",
+          "reviewId",
+          "decision",
+          "suggestion"
+        ],
+        "title": "SuggestionFeedback"
       },
       "SuggestionLocation": {
         "properties": {
@@ -1789,6 +4573,155 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WritingMaterial": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Content"
+          },
+          "materialType": {
+            "type": "string",
+            "enum": [
+              "company",
+              "jobPosting"
+            ],
+            "title": "Materialtype"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "materialType"
+        ],
+        "title": "WritingMaterial"
+      },
+      "WritingResult": {
+        "properties": {
+          "markdown": {
+            "type": "string",
+            "maxLength": 60000,
+            "minLength": 1,
+            "title": "Markdown"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Summary"
+          },
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Questions"
+          },
+          "sourceNotes": {
+            "items": {
+              "$ref": "#/components/schemas/SourceNote-Output"
+            },
+            "type": "array",
+            "title": "Sourcenotes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "markdown",
+          "summary",
+          "questions",
+          "sourceNotes"
+        ],
+        "title": "WritingResult"
+      },
+      "WritingResume": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "WritingResume"
+      },
+      "app__experience__api__WritingInput": {
+        "properties": {
+          "experience": {
+            "$ref": "#/components/schemas/ExperienceInput"
+          },
+          "resume": {
+            "$ref": "#/components/schemas/ResumeInput"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialInput"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Materials"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "experience",
+          "resume",
+          "materials"
+        ],
+        "title": "WritingInput"
+      },
+      "app__workspace__models__WritingInput": {
+        "properties": {
+          "experience": {
+            "$ref": "#/components/schemas/ExperienceSnapshot"
+          },
+          "resume": {
+            "$ref": "#/components/schemas/WritingResume"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/WritingMaterial"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Materials"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "experience",
+          "resume",
+          "materials"
+        ],
+        "title": "WritingInput"
       }
     }
   }

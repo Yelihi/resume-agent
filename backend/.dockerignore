@@ -1,0 +1,12 @@
+*
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!app/
+!app/**
+!scripts/
+!scripts/**
+**/__pycache__/
+**/*.pyc
+**/.env*
+**/*.key

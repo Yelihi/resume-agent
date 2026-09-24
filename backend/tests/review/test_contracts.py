@@ -1,4 +1,5 @@
 import pytest
+import unicodedata
 from pydantic import ValidationError
 
 from app.document_processing.flow import extract_text
@@ -132,6 +133,23 @@ def test_quote_not_present_is_removed() -> None:
     assert response.errors[0].errorCode == "INVALID_QUOTE"
 
 
+def test_canonically_equivalent_hangul_matches_without_changing_original_offsets() -> None:
+    original = unicodedata.normalize("NFD", "개발 경험을 쌓았습니다.")
+    document = extract_text(original)
+    raw = AiReviewOutput(materialReviews=[], results=[suggestion(line_ids=["f-l1"], quote="개발 경험")])
+    response = assemble_review_response(document, raw, [])
+    assert response.status is ReviewStatus.SUCCESS
+    assert document.text == original
+    assert document.blocks[0].lines[0].endOffset == len(original)
+
+
+@pytest.mark.parametrize("quote", ["비용 20% 절감", "비용 10% 증가", "비용 10 절감"])
+def test_normalization_never_accepts_changed_numbers_meaning_or_units(quote) -> None:
+    document = extract_text("비용 10% 절감")
+    raw = AiReviewOutput(materialReviews=[], results=[suggestion(line_ids=["f-l1"], quote=quote)])
+    assert assemble_review_response(document, raw, []).errors[0].errorCode == "INVALID_QUOTE"
+
+
 def test_intentionally_empty_results_are_success() -> None:
     document = extract_text("수정할 점이 없습니다.")
 
@@ -171,3 +189,14 @@ def test_unknown_material_reference_is_not_exposed() -> None:
     assert response.results == []
     assert response.materialReviews == []
     assert {error.errorCode for error in response.errors} == {"INVALID_MATERIAL_REFERENCE"}
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_feedback_length_limit_applies_to_current_and_legacy_requests(legacy):
+    from app.review.contracts import PreviousReview, ReviewContext
+
+    model = PreviousReview if legacy else ReviewContext
+    fields = {"results": []} if legacy else {"contextId": "c", "resumeVersionId": "v"}
+    assert model(**fields, userFeedback="가" * 2000).userFeedback == "가" * 2000
+    with pytest.raises(ValidationError):
+        model(**fields, userFeedback="가" * 2001)

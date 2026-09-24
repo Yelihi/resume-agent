@@ -8,7 +8,7 @@ from app.document_processing.models import FlowDocument, ModuleErrorDTO, PageDoc
 from app.errors import MissingOpenAiApiKeyError
 from app.reference_material.models import ReferenceMaterial
 
-from .contracts import AiReviewOutput, ModuleResult, PreviousReview, ContextAnalysis, ContextEvidence
+from .contracts import AiReviewOutput, ModuleResult, PreviousReview, ContextAnalysis, ContextEvidence, ReviewContext
 from .prompts import final_review_input, material_analysis_input
 
 logger = logging.getLogger("resume_agent.review")
@@ -44,12 +44,17 @@ class OpenAIReviewGateway:
     def __init__(self, client: Any, model: str) -> None:
         self.client = client
         self.model = model
+        self.authorize = None
 
     @classmethod
     def from_environment(cls) -> "OpenAIReviewGateway":
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             raise MissingOpenAiApiKeyError()
+        return cls.from_api_key(api_key)
+
+    @classmethod
+    def from_api_key(cls, api_key: str) -> "OpenAIReviewGateway":
         return cls(
             client=AsyncOpenAI(api_key=api_key),
             model=os.environ.get("OPENAI_MODEL", "gpt-5.4-mini"),
@@ -74,6 +79,8 @@ class OpenAIReviewGateway:
                 include=["web_search_call.action.sources"],
             )
         try:
+            if self.authorize:
+                self.authorize()
             response = await self.client.responses.parse(**request)
             parsed = response.output_parsed
             if not isinstance(parsed, ContextAnalysis):
@@ -93,8 +100,8 @@ class OpenAIReviewGateway:
                     ]
                     return ModuleResult(moduleKey=module_key, output=None, errors=errors)
             return ModuleResult(moduleKey=module_key, output=parsed, errors=[])
-        except Exception as error:
-            logger.exception("Material analysis failed for %s", module_key, exc_info=error)
+        except Exception:
+            logger.warning("Material analysis failed for %s", module_key)
             return ModuleResult(
                 moduleKey=module_key,
                 output=None,
@@ -107,21 +114,27 @@ class OpenAIReviewGateway:
         module_results: list[ModuleResult[Any]],
         previous_review: PreviousReview | None = None,
         materials: list[ReferenceMaterial] | None = None,
+        review_context: ReviewContext | None = None,
     ) -> ModuleResult[AiReviewOutput]:
         serialized = [result.model_dump(mode="json") for result in module_results]
         try:
+            if self.authorize:
+                self.authorize()
             response = await self.client.responses.parse(
                 model=self.model,
-                input=final_review_input(document, serialized, previous_review, materials),
+                input=final_review_input(document, serialized, previous_review, materials, review_context),
                 text_format=AiReviewOutput,
+                # Feedback never grants database, browser, file or execution capabilities.
+                tools=[],
+                tool_choice="none",
                 store=False,
             )
             parsed = response.output_parsed
             if not isinstance(parsed, AiReviewOutput):
                 raise ValueError("missing parsed review output")
             return ModuleResult(moduleKey="finalReview", output=parsed, errors=[])
-        except Exception as error:
-            logger.exception("Final review failed", exc_info=error)
+        except Exception:
+            logger.warning("Final review failed")
             return ModuleResult(
                 moduleKey="finalReview",
                 output=None,

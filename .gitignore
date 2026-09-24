@@ -9,3 +9,10 @@ dist/
 *.tsbuildinfo
 backend/benchmarks/ocr/generated/
 backend/benchmarks/ocr/reports/
+.pnpm-store/
+.wrangler/
+.env.*
+!.env.example
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
