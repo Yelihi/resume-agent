@@ -52,7 +52,10 @@ def test_backup_retention_status_and_private_failure(source, tmp_path, monkeypat
     password = tmp_path / "password"
     password.write_text("recovery-password-never-log")
     password.chmod(0o600)
-    for name, value in {"RESTIC_REPOSITORY": "s3:https://example.invalid/bucket", "RESTIC_PASSWORD_FILE": str(password), "AWS_ACCESS_KEY_ID": "access-secret", "AWS_SECRET_ACCESS_KEY": "secret-never-log"}.items():
+    repository = tmp_path / "restic"
+    repository.mkdir(mode=0o700)
+    (repository / "config").write_text("initialized repository")
+    for name, value in {"RESUME_BACKUP_MODE": "local", "RESTIC_REPOSITORY": str(repository), "RESTIC_PASSWORD_FILE": str(password), "RESTIC_PASSWORD_COMMAND": "must-not-run", "RESTIC_REPOSITORY_FILE": "must-not-read", "AWS_SECRET_ACCESS_KEY": "secret-never-log"}.items():
         monkeypatch.setenv(name, value)
     calls = []
 
@@ -60,6 +63,7 @@ def test_backup_retention_status_and_private_failure(source, tmp_path, monkeypat
         calls.append(command)
         assert kwargs["stderr"] is subprocess.DEVNULL
         assert kwargs["stdout"] is subprocess.DEVNULL
+        assert not any(name.startswith(("RESTIC_", "AWS_")) for name in kwargs["env"])
         if command[1] == "backup":
             backup.verify_snapshot(kwargs["cwd"])
 
@@ -73,8 +77,9 @@ def test_backup_retention_status_and_private_failure(source, tmp_path, monkeypat
     assert not calls
     staging.chmod(0o700)
     assert backup.run_backup(source, staging)
-    assert calls[0] == ["restic", "backup", ".", "--tag", "resume-agent"]
-    assert calls[1][1:] == ["forget", "--tag", "resume-agent", "--group-by", "host,tags", "--keep-daily", "7", "--keep-weekly", "4", "--keep-monthly", "3", "--prune"]
+    options = ["--repo", str(repository), "--password-file", str(password)]
+    assert calls[0] == ["restic", "backup", ".", "--tag", "resume-agent", *options]
+    assert calls[1][1:] == ["forget", "--tag", "resume-agent", "--group-by", "host,tags", "--keep-daily", "7", "--keep-weekly", "4", "--keep-monthly", "3", "--prune", *options]
     status_path = source / "backup-status.json"
     successful = json.loads(status_path.read_text())
     assert successful["lastSuccessAt"] and successful["error"] is None
@@ -97,3 +102,31 @@ def test_snapshot_rejects_missing_original(source, tmp_path):
     (source / "files/original").unlink()
     with pytest.raises(FileNotFoundError):
         backup.snapshot(source, tmp_path / "snapshot")
+
+
+def test_backup_defaults_disabled_and_rejects_remote_or_overlapping_storage(source, tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(backup.subprocess, "run", lambda *args, **kwargs: calls.append(args))
+    staging = tmp_path / "stage"
+    staging.mkdir(mode=0o700)
+    password = tmp_path / "password"
+    password.write_text("recovery-password")
+    password.chmod(0o600)
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", str(password))
+    local = tmp_path / "restic"
+    local.mkdir(mode=0o700)
+    (local / "config").write_text("initialized repository")
+    monkeypatch.setenv("RESTIC_REPOSITORY", str(local))
+    monkeypatch.delenv("RESUME_BACKUP_MODE", raising=False)
+    assert not backup.run_backup(source, staging)
+    monkeypatch.setenv("RESUME_BACKUP_MODE", "local")
+    for value in ("s3:https://example.invalid/bucket", "rest:https://example.invalid/", "sftp:host:/repo", "rclone:remote:repo", "relative/path", str(tmp_path / "missing")):
+        monkeypatch.setenv("RESTIC_REPOSITORY", value)
+        assert not backup.run_backup(source, staging)
+    for directory in (source, staging, source / "backup", staging / "backup", tmp_path):
+        directory.mkdir(mode=0o700, exist_ok=True)
+        directory.chmod(0o700)
+        (directory / "config").write_text("initialized repository")
+        monkeypatch.setenv("RESTIC_REPOSITORY", str(directory))
+        assert not backup.run_backup(source, staging)
+    assert not calls

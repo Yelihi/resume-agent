@@ -10,6 +10,12 @@
 
 작업 트리에는 이전 기능 개발과 배포 구현이 함께 있다. 사용자가 GitHub Actions 연결을 요청했으므로 앱과 배포에 필요한 소스·설정을 게시 대상으로 준비한다. 별도의 기존 설계 문서 변경은 그대로 보존한다. 실제 서비스 설정은 Cloudflare 계정·SSD 경로·macOS 정보와 아래 통과 조건을 확보한 뒤 진행한다.
 
+## 최신 변경: 맥미니 연동 전 미리보기와 과금 금지
+
+사용자가 원격 작업 중이므로 맥미니 초기 설치를 보류한다. Cloudflare MCP OAuth 연결, GitHub-hosted CI, 별도 `resume-agent-preview` 정적 SPA를 먼저 준비한다. 브라우저 미리보기는 서버/AI/OCR 없이 텍스트 저장·편집·새로고침 복원을 제공하고 IndexedDB를 분리한다. 운영 배포와 혼동하지 않는다.
+
+**백업 초과 과금 금지**에 따라 기존 R2 기본안을 폐기했다. 백업은 기본 disabled, 명시적 local 모드의 로컬 restic 저장소만 허용한다. 원격 저장소 주소는 실행 전에 거부한다. 실제 별도 백업 디스크가 정해지기 전 운영 자동 배포도 켜지 않는다. 현재 설정과 테스트 절차는 `deploy/README.md`, GitHub 변수·Secrets 목록은 `deploy/CI_CD.md`를 따른다.
+
 ## 최신 변경: CI/CD와 도메인 미구매
 
 2026-09-24 추가 요구에 따라 **유료 도메인을 구매하지 않는다.** 기존 공개 원본 도메인/Service Auth 설계를 교체했으며 현재 절차는 `deploy/README.md`의 **workers.dev + Access + Workers VPC Service + Tunnel**을 우선한다. Workers VPC는 현재 무료 베타로 실제 계정에서의 연결과 요금 변경을 별도 확인한다. 프록시는 VPC 전용으로 바꿨으며 공개 URL로 fallback하지 않는다.
@@ -32,7 +38,7 @@
 - Cloudflare Access + 무료 workers.dev + Workers VPC Service + 정식 Cloudflare Tunnel.
 - 프런트엔드는 Cloudflare Workers Static Assets의 SPA를 권장한다. `/api`는 Worker가 정식 Tunnel의 백엔드로 프록시한다.
 - 백엔드는 macOS 직접 실행을 검증 기준으로 유지하고, Linux ARM64 Docker 격리는 실장비 OCR·SSD·복구 시험 후 선택한다. 둘을 동시에 같은 DB에 연결하지 않는다.
-- SQLite + 원본 파일 디렉터리, 외부 백업은 `restic` + Cloudflare R2 Standard.
+- SQLite + 원본 파일 디렉터리, 백업은 별도 물리 디스크의 로컬 `restic` 저장소.
 - 초기 GitHub 저장소는 Private 권장. 공개 여부는 아직 변경하지 않았다.
 - 공개 회원가입, 사용자 간 자료 공유, Redis, 별도 작업 서버, 오프라인 양방향 동기화는 포함하지 않는다. Docker는 추가 요구에 따라 별도 검증 대상으로 전환했다.
 
@@ -50,7 +56,7 @@ flowchart LR
     S --> O[OpenAI: 사용자별 API 키]
     D --> B[암호화 백업]
     F --> B
-    B --> R[외부 R2 저장소]
+    B --> R[별도 로컬 백업 디스크]
 ```
 
 - React 빌드는 Cloudflare에 배포한다. 브라우저는 같은 도메인의 `/api`만 사용하며 Worker가 맥미니로 프록시한다. Vite 개발 서버는 운영에 사용하지 않는다. SPA fallback과 API 오류 응답은 구분한다. FastAPI 정적 제공 기능은 로컬 검증·복구 보조용이다.
@@ -113,16 +119,16 @@ SQLite에는 관계와 내용을, 별도 디렉터리에는 원본 파일을 저
 
 ## 6. 백업과 운영
 
-- 매일 SQLite의 일관된 스냅샷과 그 스냅샷이 참조하는 원본 파일을 `restic`으로 암호화해 R2에 백업한다.
+- 매일 SQLite의 일관된 스냅샷과 그 스냅샷이 참조하는 원본 파일을 `restic`으로 암호화해 별도 로컬 디스크에 백업한다. 설정 전에는 백업을 비활성화하고 원격 저장소 주소를 거부한다.
 - 백업 중 파일 삭제와 충돌하지 않도록 DB 스냅샷 생성과 참조 파일 확보를 함께 보호한다. 실행 중인 DB 파일을 단순 복사하는 방식은 사용하지 않는다.
 - 백업은 기본 최근 7일·4주·3개월을 보관한다. 제품 데이터의 무기한 보관과 백업 보관 주기는 별개다.
 - 복구 목표는 마지막 성공 백업 시점이다. 백업 실패와 마지막 성공 시각을 운영자 화면에서 확인한다.
 - API 키 복호화 키와 백업 복구 비밀번호는 서버 고장 때도 접근할 수 있는 별도 비밀정보 보관소에 보관한다.
 - DB·원본 파일·키·백업은 Git 작업 디렉터리 밖에 둔다. 맥미니의 절전 설정, 재부팅 후 서비스 시작, 디스크 잠금 해제 필요 여부를 운영 절차에 기록한다.
 - 배포 순서는 테스트 → 빌드 → 백업 → DB 마이그레이션 → 프로세스 재시작이다. 코드와 스키마가 맞지 않는 무조건적인 코드 되돌리기는 하지 않고, 변경에 맞는 복구 절차를 함께 준비한다.
-- 유료 도메인은 구매하지 않는다. 비용은 전기, 백업/플랫폼 초과 사용료와 사용자별 OpenAI 사용료다. 확인 시점의 R2 Standard에는 월 10GB-month 무료 구간이 있으나 무료 운영을 보장하지 않는다. 실제 설정 시 가격을 다시 확인한다.
+- 유료 도메인은 구매하지 않는다. 백업 클라우드 과금을 피하기 위해 R2를 사용하지 않는다. 전기·백업 디스크 구입 비용과 사용자가 직접 실행하는 OpenAI 사용료는 별개다.
 
-참고: [R2 요금](https://developers.cloudflare.com/r2/pricing/), [restic 저장소 구성](https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html).
+참고: [restic 저장소 구성](https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html).
 
 ## 7. 구현 순서
 
@@ -135,7 +141,7 @@ SQLite에는 관계와 내용을, 별도 디렉터리에는 원본 파일을 저
 
 - M4 / 16GB는 확인됨. macOS 버전, 외장 SSD 마운트 경로·파일시스템·암호화/소유권·여유 공간은 추가 확인.
 - GitHub 저장소는 `https://github.com/Yelihi/resume-agent`. Cloudflare 계정의 workers.dev 주소와 허용할 이메일 목록은 추가 확인.
-- R2 백업 저장소와 자격증명, 비밀정보 복구용 보관 위치.
+- 별도 로컬 백업 디스크와 restic 비밀번호, 비밀정보 복구용 보관 위치.
 
 맥미니 칩·메모리 외의 값은 아직 제공되지 않았다. SSD 포맷·권한·마운트 경로와 계정 보유 여부를 추정해 외부 설정을 진행하지 않는다.
 

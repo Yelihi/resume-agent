@@ -8,6 +8,11 @@ import "./styles.css";
 
 const root = createRoot(document.getElementById("root")!);
 async function start() {
+  if (import.meta.env.VITE_PREVIEW_MODE === "true") {
+    const { previewStore, previewServices } = await import("./infrastructure/preview");
+    root.render(<StrictMode><App router={createAppRouter()} store={previewStore} services={previewServices} preview /></StrictMode>);
+    return;
+  }
   root.render(<p role="status">계정과 저장소를 확인하고 있습니다.</p>);
   try {
     const account = await getAccount();

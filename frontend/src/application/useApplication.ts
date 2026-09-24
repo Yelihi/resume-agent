@@ -11,7 +11,7 @@ import { useReviewWorkflow } from "./useReviewWorkflow";
 import { selectWorkspaceView } from "./selectWorkspaceView";
 import { useExperiencesWorkflow } from "./useExperiencesWorkflow";
 
-export type ApplicationDependencies = { store: WorkspaceRepository; services: ApplicationServices; confirm: ConfirmAction };
+export type ApplicationDependencies = { store: WorkspaceRepository; services: ApplicationServices; confirm: ConfirmAction; preview?: boolean };
 
 export function useApplication({ store, services, confirm, route, navigate }: ApplicationDependencies & { route: WorkspaceRoute; navigate: Navigate }) {
   const { workspace, loaded, refresh } = useWorkspace(store);

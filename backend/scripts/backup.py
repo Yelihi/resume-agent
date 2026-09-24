@@ -86,11 +86,22 @@ def run_backup(data_dir: Path, staging_dir: Path, restic: str = "restic") -> boo
             pass
     status = {"lastAttemptAt": datetime.now(timezone.utc).isoformat(), "lastSuccessAt": previous.get("lastSuccessAt"), "error": None}
     try:
-        for variable in ("RESTIC_REPOSITORY", "RESTIC_PASSWORD_FILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"):
+        if os.environ.get("RESUME_BACKUP_MODE", "disabled") != "local":
+            raise ValueError("Local backups must be explicitly enabled")
+        for variable in ("RESTIC_REPOSITORY", "RESTIC_PASSWORD_FILE"):
             if not os.environ.get(variable):
                 raise ValueError("Backup environment is incomplete")
+        repository = Path(os.environ["RESTIC_REPOSITORY"])
+        if not repository.is_absolute():
+            raise ValueError("Only absolute local backup repository paths are allowed")
+        repository = external_directory(repository)
+        if (not repository.is_dir() or not (repository / "config").is_file()
+                or repository.stat().st_uid != os.getuid() or repository.stat().st_mode & 0o077):
+            raise ValueError("Backup repository must be existing, initialized and owner-only")
+        if any(repository.is_relative_to(path) or path.is_relative_to(repository) for path in (data_dir, staging_dir)):
+            raise ValueError("Backup repository must not overlap data or staging")
         password = external_directory(Path(os.environ["RESTIC_PASSWORD_FILE"]))
-        if not password.is_file() or password.stat().st_mode & 0o077:
+        if not password.is_file() or password.stat().st_uid != os.getuid() or password.stat().st_mode & 0o077:
             raise ValueError("Backup password file must be private")
         if (not staging_dir.is_dir() or staging_dir.stat().st_uid != os.getuid()
                 or staging_dir.stat().st_mode & 0o077 or not os.access(staging_dir, os.W_OK | os.X_OK)):
@@ -99,9 +110,12 @@ def run_backup(data_dir: Path, staging_dir: Path, restic: str = "restic") -> boo
             destination = Path(temporary) / "snapshot"
             snapshot(data_dir, destination)
             verify_snapshot(destination)
-            subprocess.run([restic, "backup", ".", "--tag", "resume-agent"], cwd=destination, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Pin the local destination and password; inherited restic commands/remote settings are not trusted.
+            options = ["--repo", str(repository), "--password-file", str(password)]
+            environment = {name: os.environ[name] for name in ("PATH", "HOME", "TMPDIR", "LANG", "LC_ALL") if name in os.environ}
+            subprocess.run([restic, "backup", ".", "--tag", "resume-agent", *options], env=environment, cwd=destination, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             status["lastSuccessAt"] = datetime.now(timezone.utc).isoformat()
-            subprocess.run([restic, "forget", "--tag", "resume-agent", "--group-by", "host,tags", "--keep-daily", "7", "--keep-weekly", "4", "--keep-monthly", "3", "--prune"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run([restic, "forget", "--tag", "resume-agent", "--group-by", "host,tags", "--keep-daily", "7", "--keep-weekly", "4", "--keep-monthly", "3", "--prune", *options], env=environment, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception:
         # Never persist subprocess messages: providers may include credentials or document paths.
         status["error"] = "BACKUP_OR_RETENTION_FAILED"

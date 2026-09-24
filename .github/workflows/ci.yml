@@ -46,6 +46,13 @@ jobs:
         run: |
           pnpm --dir frontend test
           pnpm --dir frontend build
+      - name: Build the browser-only preview
+        env:
+          VITE_PREVIEW_MODE: 'true'
+        run: |
+          pnpm --dir frontend exec vite build --outDir dist-preview
+          cp deploy/cloudflare/preview-headers frontend/dist-preview/_headers
+          npm exec --prefix deploy/cloudflare -- wrangler deploy --config deploy/cloudflare/wrangler.preview.jsonc --dry-run
       - name: Deployment checks
         run: |
           node --test deploy/cloudflare/worker.test.mjs
@@ -117,3 +124,39 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: npm exec --prefix deploy/cloudflare -- wrangler deploy --config deploy/cloudflare/wrangler.jsonc
+
+  preview:
+    needs: checks
+    if: >-
+      github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      vars.ENABLE_PREVIEW_CD == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 10.33.2
+      - name: Reject an outdated main revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: test "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" = "$GITHUB_SHA"
+      - name: Build preview without a backend
+        env:
+          VITE_PREVIEW_MODE: 'true'
+        run: |
+          pnpm --dir frontend install --frozen-lockfile
+          pnpm --dir frontend exec tsc -b
+          pnpm --dir frontend exec vite build --outDir dist-preview
+          cp deploy/cloudflare/preview-headers frontend/dist-preview/_headers
+          npm ci --ignore-scripts --prefix deploy/cloudflare
+      - name: Publish browser-only preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm exec --prefix deploy/cloudflare -- wrangler deploy --config deploy/cloudflare/wrangler.preview.jsonc

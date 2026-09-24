@@ -35,10 +35,10 @@ export const appRoutes: RouteObject[] = [{
 }];
 export const createAppRouter = () => createBrowserRouter(appRoutes);
 const defaultStore = new IndexedDbWorkspaceRepository();
-export type AppProps = { router: ReturnType<typeof createAppRouter>; store?: ApplicationDependencies["store"]; services?: Partial<ApplicationServices>; confirm?: ApplicationDependencies["confirm"] };
+export type AppProps = { router: ReturnType<typeof createAppRouter>; store?: ApplicationDependencies["store"]; services?: Partial<ApplicationServices>; confirm?: ApplicationDependencies["confirm"]; preview?: boolean };
 
-export function App({ router, store = defaultStore, services: overrides, confirm = confirmInBrowser }: AppProps) {
+export function App({ router, store = defaultStore, services: overrides, confirm = confirmInBrowser, preview = false }: AppProps) {
   const services = useMemo(() => ({ ...defaultServices, ...overrides }), [overrides]);
-  const dependencies = useMemo(() => ({ store, services, confirm }), [store, services, confirm]);
+  const dependencies = useMemo(() => ({ store, services, confirm, preview }), [store, services, confirm, preview]);
   return <ApplicationDependenciesContext.Provider value={dependencies}><RouterProvider router={router} /></ApplicationDependenciesContext.Provider>;
 }

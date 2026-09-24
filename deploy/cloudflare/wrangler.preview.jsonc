@@ -1,0 +1,11 @@
+{
+  "name": "resume-agent-preview",
+  "compatibility_date": "2026-09-24",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../../frontend/dist-preview",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": { "enabled": false }
+}

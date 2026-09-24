@@ -4,7 +4,7 @@ import { OriginalDownload } from "../components/OriginalDownload";
 import { useApplicationDependencies, useApplicationView } from "./context";
 
 export function SettingsView() {
-  const { services, confirm } = useApplicationDependencies();
+  const { services, confirm, preview } = useApplicationDependencies();
   const { application, store } = useApplicationView();
   const { task } = application;
   const [account, setAccount] = useState<Account>();
@@ -32,7 +32,7 @@ export function SettingsView() {
   return <>
     <header className="topbar"><div><span className="eyebrow">ACCOUNT</span><h1>설정</h1><p>내 계정과 데이터 이관을 관리하세요.</p></div></header>
     <div className="library-page settings-page">
-      <section className="library-card"><h2>OpenAI API 키</h2>
+      <section className="library-card"><h2>{preview ? "미리보기 저장소" : "OpenAI API 키"}</h2>
         {!account ? <p role="status">계정을 확인하고 있습니다.</p> : account.mode === "server" ? <>
           <p>{account.email} · <a href="/cdn-cgi/access/logout">로그아웃</a></p><p>{account.hasOpenAiKey ? `등록됨 · ${account.maskedOpenAiKey}` : "등록된 API 키가 없습니다."}</p>
           <form onSubmit={event => { event.preventDefault(); void save(); }}>
@@ -40,7 +40,7 @@ export function SettingsView() {
             <p>내 키로 AI 작업을 실행합니다. 저장한 키 원문은 다시 표시하지 않습니다.</p>
             <div className="card-actions"><button className="button-primary" disabled={task.busy || !apiKey.trim()}>키 저장</button><button type="button" className="button-secondary" disabled={task.busy || !account.hasOpenAiKey} onClick={remove}>키 삭제</button></div>
           </form>
-        </> : <p>로컬 개발 모드입니다. API 키는 서버 실행 환경에서 설정합니다.</p>}
+        </> : <p>{preview ? "로그인과 API 키 등록이 없는 브라우저 미리보기입니다. 데이터는 이 브라우저에만 저장되며 자동 백업되지 않습니다. 브라우저 데이터 삭제 시 사라질 수 있으니 필요한 내용은 파일로 내보내세요." : "로컬 개발 모드입니다. API 키는 서버 실행 환경에서 설정합니다."}</p>}
       </section>
       <section className="library-card"><h2>기존 데이터 이관</h2>
         {account?.mode === "local" ? <>

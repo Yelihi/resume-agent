@@ -97,3 +97,12 @@
 - actionlint 1.7.12 문법 검사, Wrangler 4.137.0 deploy dry-run 통과. 실제 계정 업로드는 없음. Gitleaks 8.30.1로 현재 게시 후보 파일과 기존 Git 이력 검사 통과. 두 테스트의 합성 키만 해당 줄에 명시적 허용 주석을 붙였으며 실제 secret을 허용한 것이 아니다.
 - 프록시는 구매 도메인/공개 원본 Service Auth 대신 무료 workers.dev + Access + Workers VPC Service 전용으로 바꿨다. 단위 검사는 실제 베타 VPC/Tunnel 연결·SSE 검증을 대신하지 않는다.
 - GitHub의 실제 CI 실행 결과, Mac runner 등록과 실제 배포, Cloudflare OAuth/API 설정은 별도로 확인해야 한다. 네이티브 CD만 준비했으며 Docker CD는 실장비 검증 후 연결한다. 자세한 절차는 deploy/CI_CD.md.
+
+
+## 맥미니 연결 전 브라우저 프리뷰 — 2026-09-24
+
+- 프런트 146개/38파일 검사 및 운영·프리뷰 빌드 통과. 백엔드 173개 통과, 유료 AI·실제 OCR 2개 제외. 배포 상태 전환 3개·Worker 2개 검사, actionlint, 운영·프리뷰 Wrangler dry-run 통과.
+- 실제 Chrome + 로컬 Wrangler에서 텍스트 이력서 작업 공간 생성, 새로고침 후 복원, 프리뷰 설정 안내와 API 키 입력 부재를 확인했다. 설정 화면 데스크톱·390px 시각 확인을 완료했고 모바일 가로 넘침은 없었다.
+- 응답의 CSP `connect-src 'none'`, frame 차단, nosniff를 확인했다. 자동 UI 검사에서 프리뷰 저장소 내보내기, AI·파일 변환·URL·계정 네트워크 호출 차단을 확인했다. 실제 인증·서버 저장·AI 품질은 프리뷰 검증 대상이 아니다.
+- 백업은 기본 disabled이고 명시적 local 모드만 허용한다. 원격 저장소·잘못된 경로·권한을 restic 실행 전에 거부하는 검사를 통과했다. 실제 별도 디스크 백업·복원은 아직 실행하지 않았다.
+- 게시 후보 파일 Gitleaks 검사에서 비밀정보가 발견되지 않았다. OAuth/API 토큰 승인과 실제 Cloudflare 게시 결과는 별도다.
