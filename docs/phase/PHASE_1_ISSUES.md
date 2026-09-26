@@ -117,7 +117,7 @@
 - 형식별 정상·빈 입력·위장 형식·손상 파일 테스트가 통과한다.
 - 반환된 모든 `lineId`, bbox와 offset 불변 조건을 자동 검사한다.
 - OCR 선택 측정과 자동 테스트 실행법이 문서에 남는다.
-- `IMPLEMENTATION_PLAN.md`의 1차 통과 조건을 모두 확인한다.
+- `docs/plan/IMPLEMENTATION_PLAN.md`의 1차 통과 조건을 모두 확인한다.
 
 ## 의존 순서
 

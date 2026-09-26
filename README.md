@@ -217,4 +217,4 @@ cd backend
 RUN_AI_EVAL=1 OPENAI_API_KEY=... uv run pytest -m ai
 ```
 
-설계 기준은 `DESIGN_NOTES.md`, 단계별 결과는 `PHASE_*_CONTEXT.md`에서 확인할 수 있다.
+문서는 [docs 문서 안내](docs/README.md)에서 찾을 수 있다. 설계 기준은 [docs/design](docs/design/DESIGN_NOTES.md), 구현·배포 계획은 [docs/plan](docs/plan/), 단계별 결과와 이슈·테스트 기록은 [docs/phase](docs/phase/)에 있다. [용량 확장·자료 삭제·원본 복구 안내](docs/plan/STORAGE_MANAGEMENT.md)도 참고한다.

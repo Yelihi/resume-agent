@@ -2,7 +2,7 @@
 
 상태: **현재 구현 기준**, 2026-09-10 갱신. 초기 가설과 완료된 결정을 분리하고 실제 API·저장 계약에 맞춰 정리했다.
 
-제품 원칙은 아래 기준과 [`DEFAULT_REVIEW_RULES.md`](./DEFAULT_REVIEW_RULES.md)를 참고한다. 상세 규칙 문서 전체를 런타임에 읽거나 주입하지는 않는다. 실제 AI 지시는 `backend/app/review/prompts.py`의 `BASE_PRINCIPLES`가 소유한다. 원칙에 적힌 질문·승인·기밀 차단이 모두 별도 제품 기능으로 구현됐다는 뜻은 아니다.
+제품 원칙은 아래 기준과 [`docs/design/DEFAULT_REVIEW_RULES.md`](DEFAULT_REVIEW_RULES.md)를 참고한다. 상세 규칙 문서 전체를 런타임에 읽거나 주입하지는 않는다. 실제 AI 지시는 `backend/app/review/prompts.py`의 `BASE_PRINCIPLES`가 소유한다. 원칙에 적힌 질문·승인·기밀 차단이 모두 별도 제품 기능으로 구현됐다는 뜻은 아니다.
 
 ## 확정된 초기 규칙
 
@@ -133,7 +133,7 @@
 - DOCX는 머리글 → 본문 문단·표의 OOXML 순서 → 바닥글로 추출한다. 원본 페이지 레이아웃은 재현하지 않는다.
 - PDF 내장 텍스트와 OCR이 겹치면 내장 텍스트를 우선한다. 다단 문서에 임의의 의미적 읽기 순서를 강제하지 않는다.
 - OCR은 PaddleOCR 3.7 + PaddlePaddle CPU 3.2.1의 모바일 검출·한국어 인식 모델을 사용하고 첫 OCR 요청에 지연 로딩한다. 저품질 입력은 전처리 후 한 번 재시도한다.
-- OCR 엔진 선택 근거와 합성 표본 수치는 [`backend/benchmarks/ocr/DECISION.md`](./backend/benchmarks/ocr/DECISION.md)에 있다. 실제 이력서 표본으로 재보정이 필요하다.
+- OCR 엔진 선택 근거와 합성 표본 수치는 [`backend/benchmarks/ocr/DECISION.md`](../../backend/benchmarks/ocr/DECISION.md)에 있다. 실제 이력서 표본으로 재보정이 필요하다.
 - HWP, DOCX 텍스트 상자 전용 처리, 비텍스트 다이어그램 의미 분석은 현재 범위 밖이다.
 
 현재 임시 제한은 PDF 20 MiB, 이미지 15 MiB, DOCX 10 MiB, TXT 2 MiB, 직접 텍스트 100,000 UTF-16 code units이다. 클라이언트는 정책 조회 API를 사용하고 서버는 실제 파일 형식과 제한을 재검증한다. 대표 표본의 처리 시간·메모리 측정 후 제한을 조정한다.
@@ -207,7 +207,7 @@
 - 서버는 검토 시작과 재실행 간 중복 실행을 차단한다. 추출 API까지 포괄하는 공통 작업 잠금은 현재 없다.
 - 같은 서버 프로세스가 살아 있으면 새로고침 후 activeRunId로 SSE에 재연결한다. 연결·저장 실패 시 ID를 유지해 다시 연결할 수 있게 한다.
 - PDF.js canvas·이미지·Flow 텍스트 뷰어가 lineId와 저장 bbox/offset을 기반으로 원문을 강조한다.
-- 현재 UI는 어두운 탐색 레일, 원문 작업 영역, 검토 패널과 자료 드로어를 사용한다. 시각 검증 기록은 `design-qa.md`를 참고한다.
+- 현재 UI는 어두운 탐색 레일, 원문 작업 영역, 검토 패널과 자료 드로어를 사용한다. 시각 검증 기록은 `docs/design/design-qa.md`를 참고한다.
 
 ## API
 
