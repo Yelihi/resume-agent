@@ -2,10 +2,10 @@ name: Backend CI and deployment
 on:
   pull_request:
     branches: [main]
-    paths: ['backend/**', 'deploy/**', '!deploy/cloudflare/**', 'frontend/openapi.json', 'frontend/src/infrastructure/http/schema.d.ts', '.github/workflows/ci.yml']
+    paths: ['backend/**', 'deploy/**', '!deploy/cloudflare/**', '!deploy/**/*.md', 'frontend/openapi.json', 'frontend/src/infrastructure/http/schema.d.ts', '.github/workflows/ci.yml']
   push:
     branches: [main]
-    paths: ['backend/**', 'deploy/**', '!deploy/cloudflare/**', 'frontend/openapi.json', 'frontend/src/infrastructure/http/schema.d.ts', '.github/workflows/ci.yml']
+    paths: ['backend/**', 'deploy/**', '!deploy/cloudflare/**', '!deploy/**/*.md', 'frontend/openapi.json', 'frontend/src/infrastructure/http/schema.d.ts', '.github/workflows/ci.yml']
   workflow_dispatch:
 permissions:
   contents: read
