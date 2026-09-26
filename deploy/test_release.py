@@ -1,4 +1,5 @@
 import importlib.util
+import plistlib
 import subprocess
 import tempfile
 import unittest
@@ -11,6 +12,40 @@ spec.loader.exec_module(release)
 
 
 class ReleaseSafetyTest(unittest.TestCase):
+    def test_installed_app_commands_and_backup_before_switch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory).resolve()
+            agents = home / 'Library/LaunchAgents'
+            agents.mkdir(parents=True)
+            launcher = home / 'Applications/Resume Agent Service.app/Contents/MacOS/ResumeAgentService'
+            launcher.parent.mkdir(parents=True)
+            launcher.touch()
+            current = Path('/Volumes/Storage2TB/server/resume-agent/release/current')
+            server, backup = [str(home / '.config/resume-agent' / name) for name in ('server.env', 'backup.env')]
+            for job in ('app', 'backup'):
+                (agents / f'com.resume-agent.{job}.plist').write_bytes(plistlib.dumps({
+                    'Label': f'com.resume-agent.{job}', 'ProgramArguments': [str(launcher), job],
+                }))
+            with patch.object(release.Path, 'home', return_value=home):
+                commands = release.service_commands(current, server, backup)
+                self.assertEqual(commands['backup'], [str(launcher), 'backup'])
+                with self.assertRaises(ValueError):
+                    release.service_commands(home / 'wrong/current', server, backup)
+                with self.assertRaises(ValueError):
+                    release.service_commands(current, server, '/wrong/backup.env')
+            old, new = home / 'old', home / 'new'
+            old.mkdir()
+            new.mkdir()
+            link = home / 'current'
+            link.symlink_to(old)
+            def execute(*args, **kwargs):
+                if args[0] == str(launcher):
+                    self.assertEqual(link.resolve(), old)
+            with patch.object(release, 'run', side_effect=execute) as calls, patch.object(release, 'wait_health'):
+                release.activate(link, new, agents / 'com.resume-agent.app.plist', server, backup, commands['backup'])
+                self.assertIn(unittest.mock.call(str(launcher), 'backup'), calls.call_args_list)
+                self.assertEqual(link.resolve(), new)
+
     def test_backup_failure_keeps_old_release_and_restarts_it(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

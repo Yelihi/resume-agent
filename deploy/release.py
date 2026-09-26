@@ -38,7 +38,29 @@ def wait_health(ready):
     raise RuntimeError('Backend health did not reach the required state')
 
 
-def activate(current, release, plist, server_env, backup_env):
+def service_commands(current, server_env, backup_env):
+    """Accept only the existing shell jobs or the installed, fixed-purpose Mac app."""
+    home = Path.home()
+    launcher = home / 'Applications/Resume Agent Service.app/Contents/MacOS/ResumeAgentService'
+    commands = {}
+    for job, environment in (('app', server_env), ('backup', backup_env)):
+        plist = home / f'Library/LaunchAgents/com.resume-agent.{job}.plist'
+        settings = plistlib.loads(plist.read_bytes())
+        command = settings.get('ProgramArguments')
+        shell = ['/bin/sh', str(current / f'deploy/run-{job}.sh'), environment]
+        wrapped = [str(launcher), job]
+        if settings.get('Label') != f'com.resume-agent.{job}':
+            raise ValueError('Unexpected LaunchAgent label')
+        if command != shell:
+            if (command != wrapped or not launcher.is_file()
+                    or current != Path('/Volumes/Storage2TB/server/resume-agent/release/current')
+                    or environment != str(home / '.config/resume-agent' / ('server.env' if job == 'app' else 'backup.env'))):
+                raise ValueError('LaunchAgent must use the configured current release and environment')
+        commands[job] = command
+    return commands
+
+
+def activate(current, release, plist, server_env, backup_env, backup_command=None):
     domain = f'gui/{os.getuid()}'
     service = f'{domain}/com.resume-agent.app'
     previous = current.resolve(strict=True)
@@ -47,7 +69,7 @@ def activate(current, release, plist, server_env, backup_env):
     try:
         wait_health(False)
         # Use the old code/schema for the pre-deployment backup, with all writes stopped.
-        run('/bin/sh', previous / 'deploy/run-backup.sh', backup_env)
+        run(*(backup_command or ['/bin/sh', previous / 'deploy/run-backup.sh', backup_env]))
     except BaseException:
         run('launchctl', 'bootstrap', domain, plist)
         wait_health(True)
@@ -91,10 +113,7 @@ def main(server_env, backup_env, root_value, revision):
     if not (previous / 'backend/.venv/bin/python').is_file():
         raise ValueError('Existing native release virtual environment is missing')
     plist = Path.home() / 'Library/LaunchAgents/com.resume-agent.app.plist'
-    settings = plistlib.loads(plist.read_bytes())
-    expected = ['/bin/sh', str(current / 'deploy/run-app.sh'), server_env]
-    if settings.get('Label') != 'com.resume-agent.app' or settings.get('ProgramArguments') != expected:
-        raise ValueError('LaunchAgent must point to release-root/current/deploy/run-app.sh and server.env')
+    commands = service_commands(current, server_env, backup_env)
     # ponytail: one deployment on one Mac; a nonblocking file lock prevents overlapping invocations.
     with (root / '.deployment.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -117,7 +136,7 @@ def main(server_env, backup_env, root_value, revision):
         run(uv, 'sync', '--frozen', '--project', release / 'backend')
         run('/bin/sh', release / 'deploy/run-app.sh', server_env, 'check')
         run(release / 'backend/.venv/bin/python', '-c', 'from app.deployment.config import get_settings; get_settings()', cwd=release / 'backend')
-        activate(current, release, plist, server_env, backup_env)
+        activate(current, release, plist, server_env, backup_env, commands['backup'])
         print(f'Deployed {revision}; previous release retained at {previous.name}')
 
 

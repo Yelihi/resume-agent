@@ -1,15 +1,17 @@
-name: CI and deployment
+name: Backend CI and deployment
 on:
   pull_request:
     branches: [main]
+    paths: ['backend/**', 'deploy/**', '!deploy/cloudflare/**', 'frontend/openapi.json', 'frontend/src/infrastructure/http/schema.d.ts', '.github/workflows/ci.yml']
   push:
     branches: [main]
+    paths: ['backend/**', 'deploy/**', '!deploy/cloudflare/**', 'frontend/openapi.json', 'frontend/src/infrastructure/http/schema.d.ts', '.github/workflows/ci.yml']
   workflow_dispatch:
 permissions:
   contents: read
 # Keep an in-progress deployment intact. A newer main run waits for it.
 concurrency:
-  group: resume-${{ github.ref }}
+  group: resume-backend-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   checks:
@@ -33,7 +35,6 @@ jobs:
         run: |
           uv sync --frozen --project backend
           pnpm --dir frontend install --frozen-lockfile
-          npm ci --ignore-scripts --prefix deploy/cloudflare
       - name: Backend tests (no paid AI or OCR model downloads)
         working-directory: backend
         run: uv run --frozen pytest -m 'not ai and not ocr' -q
@@ -42,121 +43,27 @@ jobs:
           (cd backend && uv run --frozen python -m scripts.export_openapi ../frontend/openapi.json)
           pnpm --dir frontend types:api
           git diff --exit-code -- frontend/openapi.json frontend/src/infrastructure/http/schema.d.ts
-      - name: Frontend tests and production build
-        run: |
-          pnpm --dir frontend test
-          pnpm --dir frontend build
-      - name: Build the browser-only preview
-        env:
-          VITE_PREVIEW_MODE: 'true'
-        run: |
-          pnpm --dir frontend exec vite build --outDir dist-preview
-          cp deploy/cloudflare/preview-headers frontend/dist-preview/_headers
-          npm exec --prefix deploy/cloudflare -- wrangler deploy --config deploy/cloudflare/wrangler.preview.jsonc --dry-run
       - name: Deployment checks
         run: |
-          node --test deploy/cloudflare/worker.test.mjs
           python3 -m unittest discover -s deploy -p 'test_*.py'
           python3 deploy/check-storage.py --self-test
           for script in deploy/run-app.sh deploy/run-backup.sh deploy/run-containers.sh deploy/run-release.sh; do /bin/sh -n "$script"; done
-          npm exec --prefix deploy/cloudflare -- wrangler deploy --config deploy/cloudflare/wrangler.jsonc --dry-run
           git diff --check
   backend:
     needs: checks
     if: >-
       github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
-      github.event.repository.private == true && vars.ENABLE_NATIVE_CD == 'true'
-    # Register only for the owner-controlled private repo. Never run PR jobs here.
-    runs-on: [self-hosted, macOS, ARM64, resume-production]
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - name: Reject an outdated main revision
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: test "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" = "$GITHUB_SHA"
-      - name: Back up and deploy the tested native backend
-        env:
-          SERVER_ENV: ${{ vars.RESUME_SERVER_ENV_FILE }}
-          BACKUP_ENV: ${{ vars.RESUME_BACKUP_ENV_FILE }}
-          RELEASE_ROOT: ${{ vars.RESUME_RELEASE_ROOT }}
-        run: /bin/sh deploy/run-release.sh "$SERVER_ENV" "$BACKUP_ENV" "$RELEASE_ROOT" "$GITHUB_SHA"
-  frontend:
-    needs: [checks, backend]
+      vars.ENABLE_NATIVE_CD == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      deployments: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '22'
-      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        with:
-          version: 10.33.2
-      - name: Reject an outdated main revision
+      - name: Request backup and deployment from the Mac
         env:
           GH_TOKEN: ${{ github.token }}
-        run: test "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" = "$GITHUB_SHA"
-      - name: Build the same tested revision
-        run: |
-          pnpm --dir frontend install --frozen-lockfile
-          pnpm --dir frontend build
-          npm ci --ignore-scripts --prefix deploy/cloudflare
-      - name: Configure the private VPC binding
-        env:
-          VPC_SERVICE_ID: ${{ vars.CLOUDFLARE_VPC_SERVICE_ID }}
-        run: |
-          python3 - <<'PY'
-          import json, os, uuid
-          from pathlib import Path
-          path = Path('deploy/cloudflare/wrangler.jsonc')
-          config = json.loads(path.read_text())
-          config['workers_dev'] = True
-          config['vpc_services'] = [{'binding': 'RESUME_API', 'service_id': str(uuid.UUID(os.environ['VPC_SERVICE_ID']))}]
-          path.write_text(json.dumps(config, indent=2) + '\n')
-          PY
-      - name: Publish SPA and API proxy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: npm exec --prefix deploy/cloudflare -- wrangler deploy --config deploy/cloudflare/wrangler.jsonc
-
-  preview:
-    needs: checks
-    if: >-
-      github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
-      vars.ENABLE_PREVIEW_CD == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '22'
-      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        with:
-          version: 10.33.2
-      - name: Reject an outdated main revision
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: test "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" = "$GITHUB_SHA"
-      - name: Build preview without a backend
-        env:
-          VITE_PREVIEW_MODE: 'true'
-        run: |
-          pnpm --dir frontend install --frozen-lockfile
-          pnpm --dir frontend exec tsc -b
-          pnpm --dir frontend exec vite build --outDir dist-preview
-          cp deploy/cloudflare/preview-headers frontend/dist-preview/_headers
-          npm ci --ignore-scripts --prefix deploy/cloudflare
-      - name: Publish browser-only preview
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: npm exec --prefix deploy/cloudflare -- wrangler deploy --config deploy/cloudflare/wrangler.preview.jsonc
+        run: python3 deploy/github-deploy.py request
