@@ -57,14 +57,15 @@ flowchart TD
 | 서버 health | 200 |
 | 인증 없는 API 요청 | 401 |
 | 운영 API 문서 `/docs` | 404 |
-| 예약 백업 실행 | 종료 코드 0, 2026-09-26 17:47:50 KST 성공 |
+| 예약/배포 전 백업 | 예약 실행 종료 코드 0, 최신 배포 전 백업 2026-09-26 18:48:13 KST 성공 |
 | GitHub CI | 성공 |
-| 운영 CD / preview CD | 둘 다 false |
+| 운영 CD | 백엔드 true (main push 실제 배포 성공), 프런트 false (Cloudflare Secret 대기) |
+| preview CD | false |
 | GitHub 공개 범위 | PUBLIC |
 | 실제 AI 검토 / 파일별 OCR | 이번 설치에서 아직 미검증 |
 | 실제 재부팅 후 복구 | 아직 미검증 |
 
-[확인한 CI 실행](https://github.com/Yelihi/resume-agent/actions/runs/35960365341). 예약 백업은 종료 후 `not running`으로 표시되는 것이 정상이며 마지막 종료 코드와 성공 시각을 확인한다.
+[분리한 프런트 CI 성공](https://github.com/Yelihi/resume-agent/actions/runs/36232890657), [분리한 백엔드 CI 성공](https://github.com/Yelihi/resume-agent/actions/runs/36232890668). 예약 백업은 종료 후 `not running`으로 표시되는 것이 정상이며 마지막 종료 코드와 성공 시각을 확인한다.
 
 ## 로그인과 권한의 원리
 
@@ -89,6 +90,8 @@ Worker가 지정한 헤더의 JWT를 백엔드가 서명·발급자·대상(AUD)
 | 암호화 백업 | `/Users/yelihi/Library/Application Support/resume-agent-backup/restic` |
 | 자동 실행 설정 | `/Users/yelihi/Library/LaunchAgents/com.resume-agent.*.plist` |
 | 외장 접근용 전용 앱 | `/Users/yelihi/Applications/Resume Agent Service.app` |
+| 배포 감시 전용 앱 | `/Users/yelihi/Applications/Resume Agent Deploy.app` |
+| 배포 감시/로그/checkout | `/Users/yelihi/.config/resume-agent/deployment` |
 
 서비스 데이터는 Git 저장소 밖에 있다. 개발 코드를 수정해도 현재 운영 코드는 자동으로 바뀌지 않는다. Python 실행 도구·launchd 설정·비밀 파일 등 일부는 내장 디스크에 있으며 모든 구성 요소를 외장으로 옮긴 것은 아니다.
 
@@ -209,7 +212,9 @@ launchctl kickstart -k "gui/$(id -u)/com.resume-agent.app"
 - 기존 restic 키로 새 백업 실행, 전체 읽기 검사, 별도 임시 폴더 복원, manifest·SQLite·파일 해시 검증 통과. 해당 운영 스냅샷에는 첨부 0개다.
 - 가상 첨부 1개를 별도 `resume-agent-attachment-drill` 태그로 실제 restic에 저장하고 복원해 해시·바이트 일치를 확인했다. 시험 snapshot은 `3a2ada37`이며 운영 데이터에는 추가하지 않았다. 앱 업로드부터 복원까지의 검증은 별도로 남아 있다.
 - 로컬 검사: 백엔드 173개(유료 AI/OCR 2개 제외), 프런트 146개, Worker 2개, 배포 안전성 5개 통과. 프런트 빌드·API 계약 일치·Wrangler dry-run 통과.
-- GitHub main 22ace24에서 프런트·백엔드 CI 모두 성공. 첫 실제 backend 배포 739a81c에서는 기존 서비스 앱의 자식 Python이 종료되지 않는 문제를 발견했다. 기존 release를 유지하고 실행 앱을 exec 방식으로 수정했다. 후속 배포 결과는 아래 최신 기록으로 갱신한다.
+- GitHub main 22ace24에서 프런트·백엔드 CI 모두 성공. 첫 실제 backend 배포 739a81c에서는 기존 서비스 앱의 자식 Python이 종료되지 않는 문제를 발견했다. 기존 release를 유지하고 실행 앱을 exec 방식으로 수정했다. 후속 main push `2162a10`은 CI → 백업 → 서버 교체·health → GitHub 성공 보고까지 통과했다. [실제 성공 실행](https://github.com/Yelihi/resume-agent/actions/runs/36233813955).
 - 실제 Mac 전체 재부팅·재로그인 복구는 아직 미검증이다. 기존 로그인 세션을 유지한 채 서버 작업을 진행한다. 재부팅은 작업 저장과 로그인 가능한 시간에 실시하고, 로그인 뒤 app/tunnel/deploy 및 다음 예약 백업을 확인한다.
 
 남은 실사용 검증: 개인 키 등록 → 가상 이력서/첨부 업로드 → 소규모 검토/SSE → 다른 브라우저에서 결과 조회 → 앱 첨부가 들어 있는 운영 백업 복원 → 실제 재부팅 후 로그인 복구. API 키/Fernet 키/백업 암호 원문을 채팅이나 GitHub에 올리지 않는다.
+
+최종 확인: 운영 backend release는 `2162a1030606e1cd86d9e25f2c834a5c550cb07e`, 이전 release는 보존했다. app PID와 API 리슨 PID 일치, health 정상, 미인증 API 401, docs 404, 외부 주소 Access 리다이렉트 302. 마지막 백업은 18:48:13 KST 성공(error null)이다. `ENABLE_NATIVE_CD=true`, `ENABLE_FRONTEND_CD=false`, `ENABLE_PREVIEW_CD=false`. Cloudflare 계정/VPC ID는 GitHub Variables에 등록했으며 배포 Secret은 아직 없다. 저장소는 PUBLIC, 기존 키는 재생성하지 않았다.

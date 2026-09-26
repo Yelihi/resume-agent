@@ -17,8 +17,8 @@
 | 컴퓨터 절전 / 전원 복구 | sleep=0 / autorestart=1 |
 | 설치된 도구 | Homebrew, uv 0.9.21, gh, Node, pnpm, cloudflared, restic |
 | Cloudflare 관리 로그인 | Wrangler OAuth 완료, 배포·VPC 관련 권한으로 제한 |
-| GitHub | 공개 저장소, 기존 CI 성공, Cloudflare Secret·계정 ID 미등록 |
-| 자동 배포 | ENABLE_NATIVE_CD=false, ENABLE_PREVIEW_CD=false |
+| GitHub | 공개 유지, 프런트/백엔드 CI 성공, 계정/VPC ID 등록, Cloudflare Secret 대기 |
+| 자동 배포 | ENABLE_NATIVE_CD=true (main push 실제 배포 성공), ENABLE_FRONTEND_CD=false, ENABLE_PREVIEW_CD=false |
 
 프런트엔드와 API 전달용 Worker는 Cloudflare에, Python 서버·DB·원본 파일은 맥미니에 둔다. 구매 도메인, nginx, 공유기의 80/443/8000 포트 개방은 이 구성에 필요하지 않다.
 
@@ -159,7 +159,7 @@ Worker가 생성된 뒤에도 같은 호스트 보호와 AUD가 일치하는지 
 - `backup.env`, `restic-password`는 `~/.config/resume-agent`에 권한 600으로 생성했다. 기존 비밀번호를 재생성하지 않는다. 내장 여유 공간은 약 24GiB이며 자동 용량 상한은 없다.
 - 새벽 4시 백업 LaunchAgent를 등록했고 실제 launchd 실행이 종료 코드 0으로 성공했다. 최근 확인 시각은 2026-09-26 17:47:50 KST이며 `backup-status.json`의 error는 null이다. 내장 로컬 암호화 백업으로 클라우드 저장 요금은 없다.
 - `/bin/sh`의 외장 볼륨 TCC 차단은 전용 앱 `~/Applications/Resume Agent Service.app`의 제거 가능한 볼륨 접근 허용으로 해결했다. 소스는 `~/.config/resume-agent/launcher.swift`, 실행 파일은 `Contents/MacOS/ResumeAgentService`이며 `app` 또는 `backup`만 받아 기존 스크립트를 실행한다. app/backup plist는 각각 이 실행 파일과 작업 인수를 사용한다. 앱 서명·인수 거부·launchd 실행 검사를 통과했다. 아래의 직접 `/bin/sh` LaunchAgent 생성 예시로 현재 설치를 덮어쓰지 않는다.
-- 본인 내부 사용자 ID를 `RESUME_OPERATOR_ID`에 등록하고 서버에 반영했다. 운영 CD는 비활성 상태다. 현재 release.py의 LaunchAgent 검사는 `/bin/sh` 실행만 허용하므로 전용 앱 구성을 지원하도록 수정·검증한 뒤 CD를 켜야 한다. OpenAI API 키 등록이나 유료 AI 호출은 하지 않았다.
+- 본인 내부 사용자 ID를 `RESUME_OPERATOR_ID`에 등록하고 서버에 반영했다. 운영 CD는 비활성 상태다. 이후 release.py를 수정해 전용 앱 구성을 지원했다. 첫 CD에서 확인한 자식 서버 잔류 문제도 service-launcher.swift의 exec 방식으로 수정했으며, 실제 프로세스 재시작/PID/health 확인을 통과했다. OpenAI API 키 등록이나 유료 AI 호출은 하지 않았다.
 
 ## 6. 검증된 최초 서버 코드를 설치
 
@@ -455,3 +455,7 @@ launchctl kickstart -k "gui/$(id -u)/com.resume-agent.app"
 | 배포 전 백업 실패 | 내장 백업 경로·restic 암호·남은 공간 |
 
 완료는 URL이 열리는 것만으로 판단하지 않는다. 인증·초대 철회·계정 격리·원본 보존·실제 백업 복원·재부팅 복구까지 확인한 후 지인을 초대한다. 계정·터널·서버 설치와 예약 백업은 완료했으며, 실제 이력서 검토·첨부 복원·계정 격리·재부팅·운영 CD 검증은 남아 있다.
+
+### 후속 자동 배포 검증
+
+2026-09-26 main push `2162a10`의 백엔드 CI/CD가 성공했다. 암호화 백업 → 새 release 교체 → launchd 서버 시작 → health 및 GitHub 성공 보고를 확인했다. 마지막 백업 성공은 18:48:13 KST다. 프런트 workflow는 CI 성공, Cloudflare 배포 Secret 미등록으로 CD는 false다. 실사용 로그인/개인 API 키/AI 검토/앱 첨부 및 실제 재부팅 검증은 남아 있다. 가상 첨부의 별도 restic 저장·복원 해시 검사는 통과했다. 현재 상태는 OPERATIONS_GUIDE.md를 우선한다.
