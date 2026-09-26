@@ -22,6 +22,8 @@ it("orchestrates extraction and persistence using plain port fakes without Index
   const { result, store, services, document, onSaved } = setup();
   await act(async () => { await result.current.saveResume(); });
   expect(services.extractText).toHaveBeenCalledWith("원문");
+  expect(store.createContext).not.toHaveBeenCalled();
+  await act(async () => { await result.current.confirmExtraction(); });
   expect(store.createContext).toHaveBeenCalledWith("지원", expect.objectContaining({ original: "원문", document }));
   expect(onSaved).toHaveBeenCalledWith("new-context");
 });
@@ -29,7 +31,10 @@ it("orchestrates extraction and persistence using plain port fakes without Index
 it("preserves a draft and does not navigate when the injected repository rejects a write", async () => {
   const { result, store, onSaved } = setup();
   store.createContext.mockRejectedValueOnce(new Error("storage unavailable"));
-  await act(async () => { await expect(result.current.saveResume()).rejects.toThrow("storage unavailable"); });
+  await act(async () => { await result.current.saveResume(); });
+  await act(async () => { await expect(result.current.confirmExtraction()).rejects.toThrow("storage unavailable"); });
+  expect(result.current.pendingResume).not.toBeNull();
+  expect(result.current.processingStage).toBeNull();
   expect(result.current.draft.text).toBe("원문");
   expect(onSaved).not.toHaveBeenCalled();
 });

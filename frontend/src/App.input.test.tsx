@@ -19,15 +19,39 @@ function setup(path = "/contexts/new", overrides = {}) {
   const services = { getValidationPolicy: vi.fn().mockResolvedValue(policy), extractText: vi.fn().mockResolvedValue(resumeInput().document), extractFile: vi.fn().mockResolvedValue({ kind: "flow", document: resumeInput().document }), ...overrides };
   render(<App router={createTestRouter()} store={store} services={services} />); return { store, services };
 }
-it("creates an isolated context only after extraction succeeds", async () => {
+it("creates an isolated context only after extraction and explicit confirmation", async () => {
   const { store, services } = setup();
   await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "프런트엔드 지원");
   await userEvent.click(screen.getByRole("tab", { name: "직접 입력" }));
   await userEvent.type(screen.getByLabelText("이력서 텍스트"), "경력 한 줄");
   await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  expect((await store.load()).contexts).toHaveLength(0);
+  await userEvent.click(await screen.findByRole("checkbox", { name: "원본과 비교해 검토에 사용할 수 있음을 확인했습니다." }));
+  await userEvent.click(screen.getByRole("button", { name: "확인 후 저장" }));
   expect(await screen.findByRole("button", { name: "이력서 검토하기" })).toBeEnabled();
   expect(services.extractText).toHaveBeenCalledWith("경력 한 줄");
   expect((await store.load()).contexts).toHaveLength(1);
+});
+it("keeps the same preview after a failed save and retries without extracting again", async () => {
+  const { store, services } = setup();
+  const createContext = store.createContext.bind(store);
+  vi.spyOn(store, "createContext").mockRejectedValueOnce(new Error("저장 실패")).mockImplementation(createContext);
+  await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "저장 재시도");
+  await userEvent.upload(screen.getByLabelText("이력서 파일"), new File(["hello"], "resume.txt", { type: "text/plain" }));
+  await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  const dialog = await screen.findByRole("dialog", { name: "추출 내용 확인" });
+  await userEvent.click(within(dialog).getByRole("checkbox"));
+  await userEvent.click(within(dialog).getByRole("button", { name: "확인 후 저장" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("저장 실패");
+  expect(store.getSnapshot().contexts).toHaveLength(0);
+  await userEvent.click(screen.getByRole("button", { name: "확인" }));
+  expect(screen.getByRole("dialog", { name: "추출 내용 확인" })).toBe(dialog);
+  expect(within(dialog).getByRole("checkbox")).toBeChecked();
+  expect(within(dialog).getByRole("button", { name: "확인 후 저장" })).toBeEnabled();
+  await userEvent.click(within(dialog).getByRole("button", { name: "확인 후 저장" }));
+  await screen.findByRole("button", { name: "이력서 검토하기" });
+  expect(services.extractFile).toHaveBeenCalledTimes(1);
+  expect(store.getSnapshot().contexts).toHaveLength(1);
 });
 it("shows actual preparation, file conversion and persistence stages until saving finishes", async () => {
   const validation = deferred<typeof policy>();
@@ -39,7 +63,7 @@ it("shows actual preparation, file conversion and persistence stages until savin
   await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "진행 확인");
   await userEvent.upload(screen.getByLabelText("이력서 파일"), new File(["hello"], "resume.txt", { type: "text/plain" }));
   await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
-  const dialog = await screen.findByRole("dialog", { name: "이력서를 준비하고 있습니다" });
+  const dialog = await screen.findByRole("dialog", { name: "추출 내용 확인" });
   expect(within(dialog).getByText("입력 확인")).toHaveAttribute("aria-current", "step");
   expect(dialog.querySelector(".document-skeleton")).toBeInTheDocument();
   expect(screen.getByLabelText("이력서 파일")).toBeDisabled();
@@ -51,11 +75,21 @@ it("shows actual preparation, file conversion and persistence stages until savin
   expect(store.getSnapshot().contexts).toHaveLength(0);
   expect(services.extractFile).toHaveBeenCalledTimes(1);
   await act(async () => extracted.resolve({ kind: "flow", document: resumeInput().document }));
+  expect(screen.getByRole("dialog", { name: "추출 내용 확인" })).toBe(dialog);
+  expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  expect(dialog.querySelector(".document-skeleton")).not.toBeInTheDocument();
+  expect(within(dialog).getByText("변환 완료")).toBeInTheDocument();
+  expect(within(dialog).getByText("내용 확인", { exact: true })).toHaveAttribute("aria-current", "step");
+  expect(within(dialog).getByRole("region", { name: "비교할 원문" })).toHaveTextContent("경력 한 줄");
+  expect(store.getSnapshot().contexts).toHaveLength(0);
+  await userEvent.click(within(dialog).getByRole("checkbox"));
+  await userEvent.click(within(dialog).getByRole("button", { name: "확인 후 저장" }));
+  expect(screen.getByRole("dialog", { name: "추출 내용 확인" })).toBe(dialog);
   expect(within(dialog).getByText("저장", { exact: true })).toHaveAttribute("aria-current", "step");
   expect(store.getSnapshot().contexts).toHaveLength(0);
   await act(async () => saving.resolve());
   await screen.findByRole("button", { name: "이력서 검토하기" });
-  expect(screen.queryByRole("dialog", { name: "이력서를 준비하고 있습니다" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "추출 내용 확인" })).not.toBeInTheDocument();
   expect(store.getSnapshot().contexts).toHaveLength(1);
 });
 
@@ -66,14 +100,16 @@ it("removes the progress dialog after failure and retries with the selected file
   const file = new File(["hello"], "resume.txt", { type: "text/plain" });
   await userEvent.upload(screen.getByLabelText("이력서 파일"), file);
   await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
-  await screen.findByRole("dialog", { name: "이력서를 준비하고 있습니다" });
+  await screen.findByRole("dialog", { name: "추출 내용 확인" });
   await act(async () => extracted.reject(new Error("변환 실패")));
   expect(await screen.findByRole("alert")).toHaveTextContent("변환 실패");
-  expect(screen.queryByRole("dialog", { name: "이력서를 준비하고 있습니다" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "추출 내용 확인" })).not.toBeInTheDocument();
   expect(screen.getByLabelText("이력서 파일")).toBeEnabled();
   expect(store.getSnapshot().contexts).toHaveLength(0);
   await userEvent.click(screen.getByRole("button", { name: "확인" }));
   await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  await userEvent.click(await screen.findByRole("checkbox", { name: "원본과 비교해 검토에 사용할 수 있음을 확인했습니다." }));
+  await userEvent.click(screen.getByRole("button", { name: "확인 후 저장" }));
   await screen.findByRole("button", { name: "이력서 검토하기" });
   expect(services.extractFile).toHaveBeenLastCalledWith(file, "txt");
 });
@@ -97,10 +133,10 @@ it("requires extraction confirmation before saving a suspect resume", async () =
   await userEvent.click(screen.getByRole("tab", { name: "직접 입력" }));
   await userEvent.type(screen.getByLabelText("이력서 텍스트"), "확인할 문장");
   await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
-  await screen.findByRole("dialog", { name: "이력서를 준비하고 있습니다" });
+  const dialog = await screen.findByRole("dialog", { name: "추출 내용 확인" });
   await act(async () => extracted.resolve(document));
-  expect(await screen.findByRole("dialog", { name: "추출 내용 확인" })).toHaveAttribute("open");
-  expect(screen.queryByRole("dialog", { name: "이력서를 준비하고 있습니다" })).not.toBeInTheDocument();
+  expect(screen.getByRole("dialog", { name: "추출 내용 확인" })).toBe(dialog);
+  expect(screen.getAllByRole("dialog")).toHaveLength(1);
   expect(screen.getByRole("button", { name: "확인 후 저장" })).toBeDisabled();
   expect((await store.load()).contexts).toHaveLength(0);
   await userEvent.click(screen.getByRole("checkbox", { name: "원본과 비교해 검토에 사용할 수 있음을 확인했습니다." }));
@@ -120,6 +156,8 @@ it("selects a dropped resume and saves it through the existing extraction flow",
   expect(area).not.toHaveClass("is-dragging");
   expect(screen.getByText("resume.txt")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  await userEvent.click(await screen.findByRole("checkbox", { name: "원본과 비교해 검토에 사용할 수 있음을 확인했습니다." }));
+  await userEvent.click(screen.getByRole("button", { name: "확인 후 저장" }));
   await screen.findByRole("button", { name: "이력서 검토하기" });
   expect(services.extractFile).toHaveBeenCalledWith(file, "txt");
 });
