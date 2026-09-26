@@ -7,7 +7,7 @@
 | 변경 | GitHub workflow | 배포 |
 | --- | --- | --- |
 | `frontend/**`, `deploy/cloudflare/**` | Frontend CI and deployment | 테스트·빌드·Worker 검사 → Cloudflare SPA/API 프록시 배포 |
-| `backend/**`, Cloudflare 외 `deploy/**`, API 계약 파일 | Backend CI and deployment | 테스트·API 계약·운영 검사 → 배포 요청 → Mac 백업·코드 교체·재시작·health → GitHub에 결과 기록 |
+| `backend/**`, Cloudflare·Markdown 외 `deploy/**`, API 계약 파일 | Backend CI and deployment | 테스트·API 계약·운영 검사 → 배포 요청 → Mac 백업·코드 교체·재시작·health → GitHub에 결과 기록 |
 | 각 workflow 파일 | 해당 workflow | 같은 검사·배포 |
 | 위 경로 밖 문서만 | 실행하지 않음 | 서비스 유지 |
 
@@ -66,6 +66,8 @@ launchctl print "gui/$(id -u)/com.resume-agent.deploy"
 tail -n 80 "$HOME/.config/resume-agent/deployment/deploy.log"
 launchctl print "gui/$(id -u)/com.resume-agent.app"
 launchctl print "gui/$(id -u)/com.resume-agent.tunnel"
+python3 deploy/check-service.py
+# 또는 단순 HTTP 확인:
 curl --fail http://127.0.0.1:8000/health
 cat /Volumes/Storage2TB/server/resume-agent/data/backup-status.json
 df -h / /Volumes/Storage2TB
@@ -87,3 +89,5 @@ df -h / /Volumes/Storage2TB
 - 과거 release와 백업을 배포 스크립트가 임의 삭제하지 않음. 디스크 여유 공간을 운영자가 확인.
 
 Docker는 현재 배포에 필요하지 않다. 기존 macOS Python 가상환경 + launchd가 서버를 실행한다. Docker로 전환하려면 Linux ARM64 OCR·볼륨·백업·재부팅 복구를 별도로 검증한다.
+
+서비스 앱 소스는 `deploy/service-launcher.swift`다. launchd가 중지하는 PID와 실제 서버 PID가 같도록 `execve`로 실행한다. `python3 deploy/check-service.py`는 health와 PID 일치를 함께 검사한다. 기존 Foundation Process 방식은 launchd 종료 후 Python이 남는 문제가 실제 배포에서 확인되어 교체했다. 이전 실행 파일은 `~/.config/resume-agent/deployment/ResumeAgentService-before-exec-fix`에 보존했다.

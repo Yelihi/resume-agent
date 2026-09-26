@@ -192,7 +192,7 @@ launchctl kickstart -k "gui/$(id -u)/com.resume-agent.app"
 - 두 배포는 독립 실행이므로 함께 변경할 때 API 하위 호환을 유지한다. 실패한 배포는 상태 확인 후 해당 workflow를 최신 main으로 다시 실행한다.
 - Tunnel·새벽 4시 백업·개인 키는 배포 때 그대로 유지된다. Mac 재부팅 자체는 배포 과정에 포함하지 않는다.
 
-기존 전용 서비스 앱은 그대로 보존했다. 별도 `Resume Agent Deploy.app`과 `com.resume-agent.deploy`를 추가했다. 새 앱의 외장 접근 권한과 기존 gh 인증이 필요하다. 감시 job은 대기 중 not running, 최근 종료 코드 0이면 정상이다.
+기존 서비스 앱의 경로·설정은 유지했다. 자식 서버가 남는 문제를 고치기 위해 실행 파일만 기존 사본을 보관한 뒤 exec 방식으로 갱신했다. 별도 `Resume Agent Deploy.app`과 `com.resume-agent.deploy`를 추가했다. 새 앱의 외장 접근 권한과 기존 gh 인증이 필요하다. 감시 job은 대기 중 not running, 최근 종료 코드 0이면 정상이다.
 
 ## 주소·API 키·Docker
 
@@ -207,8 +207,9 @@ launchctl kickstart -k "gui/$(id -u)/com.resume-agent.app"
 - 외부 HTTPS 요청은 Access 로그인으로 이동한다. Chrome에서도 로그인 화면 확인. 인증 후 실제 화면/검토는 사용자 로그인 대기 중이다. 휴대폰 LTE/5G 등 별도 네트워크 접속은 아직 확인하지 않았다.
 - app/Tunnel running, 로컬 health 정상, 기존 예약 백업 성공을 재확인했다.
 - 기존 restic 키로 새 백업 실행, 전체 읽기 검사, 별도 임시 폴더 복원, manifest·SQLite·파일 해시 검증 통과. 해당 운영 스냅샷에는 첨부 0개다.
+- 가상 첨부 1개를 별도 `resume-agent-attachment-drill` 태그로 실제 restic에 저장하고 복원해 해시·바이트 일치를 확인했다. 시험 snapshot은 `3a2ada37`이며 운영 데이터에는 추가하지 않았다. 앱 업로드부터 복원까지의 검증은 별도로 남아 있다.
 - 로컬 검사: 백엔드 173개(유료 AI/OCR 2개 제외), 프런트 146개, Worker 2개, 배포 안전성 5개 통과. 프런트 빌드·API 계약 일치·Wrangler dry-run 통과.
-- GitHub main에 배포 코드 22ace24를 push했다. 운영 CD 활성화와 새 SHA 교체 결과는 아래 최신 기록으로 갱신한다.
+- GitHub main 22ace24에서 프런트·백엔드 CI 모두 성공. 첫 실제 backend 배포 739a81c에서는 기존 서비스 앱의 자식 Python이 종료되지 않는 문제를 발견했다. 기존 release를 유지하고 실행 앱을 exec 방식으로 수정했다. 후속 배포 결과는 아래 최신 기록으로 갱신한다.
 - 실제 Mac 전체 재부팅·재로그인 복구는 아직 미검증이다. 기존 로그인 세션을 유지한 채 서버 작업을 진행한다. 재부팅은 작업 저장과 로그인 가능한 시간에 실시하고, 로그인 뒤 app/tunnel/deploy 및 다음 예약 백업을 확인한다.
 
 남은 실사용 검증: 개인 키 등록 → 가상 이력서/첨부 업로드 → 소규모 검토/SSE → 다른 브라우저에서 결과 조회 → 앱 첨부가 들어 있는 운영 백업 복원 → 실제 재부팅 후 로그인 복구. API 키/Fernet 키/백업 암호 원문을 채팅이나 GitHub에 올리지 않는다.
