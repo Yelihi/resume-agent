@@ -17,8 +17,8 @@
 | 컴퓨터 절전 / 전원 복구 | sleep=0 / autorestart=1 |
 | 설치된 도구 | Homebrew, uv 0.9.21, gh, Node, pnpm, cloudflared, restic |
 | Cloudflare 관리 로그인 | Wrangler OAuth 완료, 배포·VPC 관련 권한으로 제한 |
-| GitHub | 공개 유지, 프런트/백엔드 CI 성공, 계정/VPC ID 등록, Cloudflare Secret 대기 |
-| 자동 배포 | ENABLE_NATIVE_CD=true (main push 실제 배포 성공), ENABLE_FRONTEND_CD=false, ENABLE_PREVIEW_CD=false |
+| GitHub | 공개 유지, 프런트/백엔드 CI 성공, 계정/VPC ID와 Cloudflare 배포 Secret 등록 |
+| 자동 배포 | ENABLE_NATIVE_CD=true, ENABLE_FRONTEND_CD=true (각각 실제 배포 성공), ENABLE_PREVIEW_CD=false |
 
 프런트엔드와 API 전달용 Worker는 Cloudflare에, Python 서버·DB·원본 파일은 맥미니에 둔다. 구매 도메인, nginx, 공유기의 80/443/8000 포트 개방은 이 구성에 필요하지 않다.
 
@@ -114,7 +114,7 @@ uv --version
 | Variable | ENABLE_NATIVE_CD | 아직 false 유지 |
 | Variable | ENABLE_PREVIEW_CD | 실제 운영 설치에서는 false 유지 가능 |
 
-프리뷰와 달리 운영 배포에는 VPC binding 권한도 필요하다. VPC를 만드는 사용자는 Connectivity Directory Admin, 기존 VPC를 연결하는 배포 사용자는 Connectivity Directory Bind 역할이 필요하다. API 토큰의 실제 권한 선택 및 해당 사용자 역할을 함께 확인한다. VPC 권한 오류를 전체 관리자 토큰으로 우회하지 않는다. [VPC 권한 안내](https://developers.cloudflare.com/workers-vpc/configuration/vpc-services/).
+프리뷰와 달리 운영 배포에는 VPC binding 권한도 필요하다. VPC를 만드는 사용자는 Connectivity Directory Admin, 기존 VPC를 연결하는 배포 사용자는 Connectivity Directory Bind 역할이 필요하다. 현재 사용 중인 계정 토큰은 계정 관리 → 계정 API 토큰 → `resume-agent-github`에서 편집한다. 권한 검색에서 `Connectivity Directory` → `Bind`를 선택해 업데이트하면 기존 GitHub Secret을 그대로 사용할 수 있다. 이 권한 보완 후 실제 GitHub 배포가 성공했다. VPC 권한 오류를 전체 관리자 토큰으로 우회하지 않는다. [VPC 권한 안내](https://developers.cloudflare.com/workers-vpc/configuration/vpc-services/).
 
 OpenAI 키, 맥미니 환경 파일 내용, Fernet 키, Tunnel 토큰, 백업 비밀번호는 GitHub에 올리지 않는다. OpenAI 키는 운영 사이트 로그인 후 앱 설정에서 입력한다.
 
@@ -458,4 +458,4 @@ launchctl kickstart -k "gui/$(id -u)/com.resume-agent.app"
 
 ### 후속 자동 배포 검증
 
-2026-09-26 main push `2162a10`의 백엔드 CI/CD가 성공했다. 암호화 백업 → 새 release 교체 → launchd 서버 시작 → health 및 GitHub 성공 보고를 확인했다. 마지막 백업 성공은 18:48:13 KST다. 프런트 workflow는 CI 성공, Cloudflare 배포 Secret 미등록으로 CD는 false다. 실사용 로그인/개인 API 키/AI 검토/앱 첨부 및 실제 재부팅 검증은 남아 있다. 가상 첨부의 별도 restic 저장·복원 해시 검사는 통과했다. 현재 상태는 OPERATIONS_GUIDE.md를 우선한다.
+2026-09-26 main push `2162a10`의 백엔드 CI/CD가 성공했다. 암호화 백업 → 새 release 교체 → launchd 서버 시작 → health 및 GitHub 성공 보고를 확인했다. 마지막 백업 성공은 18:48:13 KST다. 프런트 CD도 활성화했으며 main push `914c39d`의 CI 통과 후 VPC 권한 오류 10196을 기존 토큰의 Bind 권한 추가로 해결했다. 동일 실행을 재시도해 19:34 KST Cloudflare 게시와 운영 버전 100% 적용을 확인했다. 백엔드 release와 PID는 유지됐다. 실사용 로그인/개인 API 키/AI 검토/앱 첨부 및 실제 재부팅 검증은 남아 있다. 가상 첨부의 별도 restic 저장·복원 해시 검사는 통과했다. 현재 상태는 OPERATIONS_GUIDE.md를 우선한다.

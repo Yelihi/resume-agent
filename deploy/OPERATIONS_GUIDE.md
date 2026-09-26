@@ -59,7 +59,7 @@ flowchart TD
 | 운영 API 문서 `/docs` | 404 |
 | 예약/배포 전 백업 | 예약 실행 종료 코드 0, 최신 배포 전 백업 2026-09-26 18:48:13 KST 성공 |
 | GitHub CI | 성공 |
-| 운영 CD | 백엔드 true (main push 실제 배포 성공), 프런트 false (Cloudflare Secret 대기) |
+| 운영 CD | 백엔드·프런트 true (각각 main push 배포 성공, 프런트는 권한 보완 후 동일 실행 재시도) |
 | preview CD | false |
 | GitHub 공개 범위 | PUBLIC |
 | 실제 AI 검토 / 파일별 OCR | 이번 설치에서 아직 미검증 |
@@ -217,4 +217,10 @@ launchctl kickstart -k "gui/$(id -u)/com.resume-agent.app"
 
 남은 실사용 검증: 개인 키 등록 → 가상 이력서/첨부 업로드 → 소규모 검토/SSE → 다른 브라우저에서 결과 조회 → 앱 첨부가 들어 있는 운영 백업 복원 → 실제 재부팅 후 로그인 복구. API 키/Fernet 키/백업 암호 원문을 채팅이나 GitHub에 올리지 않는다.
 
-최종 확인: 운영 backend release는 `2162a1030606e1cd86d9e25f2c834a5c550cb07e`, 이전 release는 보존했다. app PID와 API 리슨 PID 일치, health 정상, 미인증 API 401, docs 404, 외부 주소 Access 리다이렉트 302. 마지막 백업은 18:48:13 KST 성공(error null)이다. `ENABLE_NATIVE_CD=true`, `ENABLE_FRONTEND_CD=false`, `ENABLE_PREVIEW_CD=false`. Cloudflare 계정/VPC ID는 GitHub Variables에 등록했으며 배포 Secret은 아직 없다. 저장소는 PUBLIC, 기존 키는 재생성하지 않았다.
+최종 확인: 운영 backend release는 `2162a1030606e1cd86d9e25f2c834a5c550cb07e`, 이전 release는 보존했다. app PID와 API 리슨 PID 일치, health 정상, 미인증 API 401, docs 404, 외부 주소 Access 리다이렉트 302. 마지막 백업은 18:48:13 KST 성공(error null)이다. `ENABLE_NATIVE_CD=true`, `ENABLE_FRONTEND_CD=true`, `ENABLE_PREVIEW_CD=false`. Cloudflare 계정/VPC ID는 GitHub Variables에, 사용자가 생성한 배포 토큰은 CLOUDFLARE_API_TOKEN Secret에 등록했다. 토큰 값은 문서에 기록하지 않는다. 저장소는 PUBLIC, 기존 키는 재생성하지 않았다.
+
+### 프런트 자동 배포 검증 (2026-09-26 19:34 KST)
+
+사용자가 CLOUDFLARE_API_TOKEN을 등록했고 ENABLE_FRONTEND_CD를 true로 켰다. main push `914c39d`에서 프런트 CI는 통과했지만 첫 Worker 게시가 Cloudflare 오류 10196(VPC resource 권한 부족)으로 실패했다. 기존 계정 토큰 `resume-agent-github`에 `Connectivity Directory Bind`만 추가하고 실패한 job을 재실행해 실제 배포에 성공했다. 토큰 재생성·Secret 재등록은 하지 않았다. [성공 실행](https://github.com/Yelihi/resume-agent/actions/runs/36235148306).
+
+Cloudflare 운영 version `26751d6e-ed13-40d4-a90b-50f6b3da8b58`이 100% 적용됐으며 배포 메시지는 `GitHub 914c39da3843b051ce28c7913e3c536e054933f0`이다. 기존 VPC Service binding도 배포 로그에서 확인했다. 이번 push에는 백엔드 workflow가 실행되지 않았고, backend release `2162a10`과 PID 11139가 유지됐다. 백엔드 health/PID 검사와 Tunnel ready 200을 통과했고, 운영 주소의 Access 리다이렉트 302를 확인했다. 프런트 배포는 Mac 서버를 재시작하지 않는다.

@@ -47,7 +47,7 @@ Mac은 요청 SHA와 현재 main, 원본 저장소, workflow 경로, 실행 ID/�
 | Variable | `CLOUDFLARE_VPC_SERVICE_ID` | 기존 `resume-agent-api` Service UUID |
 | Secret | `CLOUDFLARE_API_TOKEN` | 해당 계정의 Workers 배포 및 기존 VPC binding 권한 |
 
-계정/VPC 식별자는 기존 설치 값을 사용한다. 배포 전용 Cloudflare 토큰은 Workers Scripts Edit, Account Settings Read 및 기존 VPC binding 권한이 필요하다. [VPC 권한 설명](https://developers.cloudflare.com/workers-vpc/configuration/vpc-services/). 대화형 Wrangler OAuth를 GitHub Secret으로 복사하지 않는다. 새로운 토큰이 필요하면 배포 용도로만 만들고 기존 키를 재생성하지 않는다.
+계정/VPC 식별자는 기존 설치 값을 사용한다. 배포 전용 Cloudflare 토큰은 Workers Scripts Edit, Account Settings Read 및 Connectivity Directory Bind 권한이 필요하다. 현재 계정 토큰 `resume-agent-github`에는 Workers Scripts Write/Read, Account Settings Read, Connectivity Directory Bind가 설정되어 있다. VPC 오류 10196은 기존 토큰에 Bind 권한을 추가해 해결했으며 Secret 재등록 없이 배포에 성공했다. [VPC 권한 설명](https://developers.cloudflare.com/workers-vpc/configuration/vpc-services/). 대화형 Wrangler OAuth를 GitHub Secret으로 복사하지 않는다. 새로운 토큰이 필요하면 배포 용도로만 만들고 기존 키를 재생성하지 않는다.
 
 서버 환경 파일·개인 OpenAI 키·Fernet 키·Tunnel 토큰·restic 비밀번호는 GitHub에 넣지 않는다. GitHub backend job의 임시 `GITHUB_TOKEN`은 contents read/deployments write만 사용한다. `RESUME_*_ENV_FILE` 등의 서버 경로 변수와 private 저장소/self-hosted runner 조건은 새 구성에 필요하지 않다.
 
