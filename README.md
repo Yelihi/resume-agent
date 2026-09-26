@@ -12,9 +12,9 @@
 
 [![Archify로 만든 서비스 구성도: 브라우저에서 Cloudflare Access, Worker, VPC, Tunnel을 거쳐 Mac mini의 FastAPI로 연결되며, 외장 SSD에 데이터를 저장하고 내장 디스크에 암호화 백업한다.](docs/architecture/runtime.visual-check.2048x1320.light.png)](docs/architecture/runtime.visual-check.2048x1320.light.png)
 
-**[Archify 탐색용 HTML](docs/architecture/runtime.html)** · [다크 테마 그림](docs/architecture/runtime.visual-check.2048x1320.dark.png) · [그림 원본 JSON](docs/architecture/runtime.architecture.json) · [검증 기록](docs/architecture/README.md)
+**[인터랙티브 구성도 바로 열기](https://yelihi.github.io/resume-agent/)** · [HTML 파일](docs/architecture/runtime.html) · [다크 테마 그림](docs/architecture/runtime.visual-check.2048x1320.dark.png) · [그림 원본 JSON](docs/architecture/runtime.architecture.json) · [검증 기록](docs/architecture/README.md)
 
-GitHub README에서는 위 정적 그림을 본다. 탐색용 HTML은 내려받아 브라우저에서 열면 확대, 노드 선택, 연결 추적, 테마 전환을 사용할 수 있다. 저장소가 Mac에 있다면 프로젝트 루트에서 `open docs/architecture/runtime.html`로 연다. 설명은 한국어이며 Archify 고정 메뉴와 HTML 언어 설정은 영어다.
+GitHub README에서는 위 정적 그림을 보고, **구성도 바로 열기** 링크에서는 다운로드 없이 확대, 노드 선택, 연결 추적, 테마 전환을 사용할 수 있다. GitHub Pages가 `main`의 `docs/` 폴더를 게시하며, 운영 서비스와 별개의 공개 문서 페이지다. 로컬에서는 프로젝트 루트에서 `open docs/architecture/runtime.html`로 연다. 설명은 한국어이며 Archify 고정 메뉴와 HTML 언어 설정은 영어다.
 
 ### 1. 각각 무슨 일을 하나요?
 
@@ -80,7 +80,7 @@ flowchart TD
 | `backend/**`, Cloudflare·Markdown 외 `deploy/**` | 백엔드 workflow | 백업 후 Python 서버 교체·재시작. 잠깐 API 사용 중단 |
 | `frontend/openapi.json`, `frontend/src/infrastructure/http/schema.d.ts` | 두 workflow | 프런트 경로이면서 백엔드 API 계약 파일이므로 양쪽 검사·배포 |
 | 각 workflow 파일 | 해당 workflow | 그 workflow의 검사·배포 |
-| README 등 위 경로 밖의 문서만 | 실행 안 함 | 서비스 그대로 유지 |
+| README 등 위 경로 밖의 문서만 | 앱 CI/CD 실행 안 함 | 서비스 그대로 유지. GitHub Pages는 main에서 docs를 다시 게시할 수 있음 |
 
 **GitHub가 Mac에 SSH로 들어가 배포하는 구조는 아니다.** Mac의 배포 감시 프로그램이 GitHub에 요청을 조회하고 검증된 코드를 가져온다. 운영 Mac에는 GitHub Actions runner가 없으며, 저장소 공개 범위도 그대로다. PR에서는 검사만 수행하고 운영 배포는 하지 않는다.
 

@@ -4,7 +4,7 @@
 
 ## 서비스 구성도
 
-- [탐색용 HTML](runtime.html): 파일을 다운로드하거나 로컬에서 브라우저로 연다. 별도 서버가 필요 없다.
+- [인터랙티브 구성도 바로 열기](https://yelihi.github.io/resume-agent/): GitHub Pages에서 다운로드 없이 탐색한다. [HTML 파일](runtime.html)을 다운로드하거나 로컬 브라우저에서 열 수도 있다.
 - [Archify 원본](runtime.architecture.json): `architecture` 유형, showcase 품질 기준.
 - [밝은 테마](runtime.visual-check.2048x1320.light.png), [어두운 테마](runtime.visual-check.2048x1320.dark.png): 정확히 배포된 HTML에서 수집한 화면 캡처. README에는 밝은 테마를 표시한다.
 - [아티팩트 검증 영수증](runtime.delivery.json), [브라우저 검사 영수증](runtime.visual-check.json), [네 장의 검토 화면](runtime.visual-check.html).
@@ -12,6 +12,12 @@
 작성 기준은 저장소 커밋 `d50233b556bc223db2486122ce1780e98537358d`와 2026-09-26 운영 기록이다. HTML의 SRC 링크는 검증한 해당 커밋의 코드로 연결된다. 모든 관계선에는 전달하는 요청이나 수행하는 작업을 표시했다. 응답의 역방향과 정적 파일 반환은 하단 설명 카드와 프로젝트 README에서 설명한다.
 
 Archify 2.17로 생성했다. 설명은 한국어이고 고정 Viewer UI와 `<html lang>`은 영어 기본값이다. 생성된 HTML을 직접 수정하지 않고 JSON 원본을 수정한 뒤 다시 검증·생성한다.
+
+## GitHub Pages 게시
+
+저장소 Settings → Pages에서 **Deploy from a branch → main → /docs**로 게시한다. `docs/.nojekyll`로 HTML을 변환 없이 제공하며, `docs/index.html`은 검증된 `architecture/runtime.html`로 이동시킨다. 별도 배포 Secret이나 사용자 정의 Actions workflow는 필요 없다. `main`에 변경을 push하면 GitHub의 `pages build and deployment` 실행에서 게시 결과를 확인한다.
+
+이 주소는 공개 아키텍처 문서용이다. 이력서 서비스 주소와 Cloudflare Access 인증, Mac 서버의 CI/CD 설정은 그대로 사용한다. Pages에 게시되는 `docs/`에는 비밀 키나 사용자 자료를 넣지 않는다.
 
 ## 검증 결과
 
