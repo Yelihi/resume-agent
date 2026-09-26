@@ -1,0 +1,216 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "main push 이후, 두 배포가 따로 움직입니다",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "author",
+      "label": "개발자"
+    },
+    {
+      "id": "frontend-job",
+      "label": "GitHub → Cloudflare"
+    },
+    {
+      "id": "backend-job",
+      "label": "GitHub Actions"
+    },
+    {
+      "id": "mac-deploy",
+      "label": "Mac mini 배포 감시"
+    }
+  ],
+  "mainPath": [
+    "main-push",
+    "backend-checks",
+    "deployment-request",
+    "poll-verify",
+    "stop-backup",
+    "switch-start",
+    "health-report"
+  ],
+  "nodes": [
+    {
+      "id": "main-push",
+      "lane": "author",
+      "col": 0,
+      "type": "external",
+      "label": "main push",
+      "sublabel": "변경한 파일 경로로 분기",
+      "width": 170
+    },
+    {
+      "id": "frontend-checks",
+      "lane": "frontend-job",
+      "col": 1,
+      "type": "frontend",
+      "label": "프런트 CI",
+      "sublabel": "테스트 · 빌드 · Worker 검사",
+      "width": 170
+    },
+    {
+      "id": "cloud-publish",
+      "lane": "frontend-job",
+      "col": 2,
+      "type": "cloud",
+      "label": "Cloudflare 배포",
+      "sublabel": "SPA 파일 + Worker 교체",
+      "width": 170
+    },
+    {
+      "id": "frontend-ready",
+      "lane": "frontend-job",
+      "col": 3,
+      "type": "frontend",
+      "label": "새 화면 제공",
+      "sublabel": "서버 유지"
+    },
+    {
+      "id": "backend-checks",
+      "lane": "backend-job",
+      "col": 1,
+      "type": "backend",
+      "label": "백엔드 CI",
+      "sublabel": "테스트 · API 계약 · 배포 검사",
+      "width": 170
+    },
+    {
+      "id": "deployment-request",
+      "lane": "backend-job",
+      "col": 2,
+      "type": "messagebus",
+      "label": "배포 요청 등록",
+      "sublabel": "GitHub Deployment"
+    },
+    {
+      "id": "poll-verify",
+      "lane": "mac-deploy",
+      "col": 2,
+      "type": "security",
+      "label": "60초마다 확인",
+      "sublabel": "main SHA · CI · 요청 검증",
+      "width": 170
+    },
+    {
+      "id": "stop-backup",
+      "lane": "mac-deploy",
+      "col": 3,
+      "type": "database",
+      "label": "서버 정지 · 백업",
+      "sublabel": "내장 디스크에 암호화 저장",
+      "width": 170
+    },
+    {
+      "id": "switch-start",
+      "lane": "mac-deploy",
+      "col": 4,
+      "type": "backend",
+      "label": "교체 · 재시작",
+      "sublabel": "새 release의 Python 실행",
+      "width": 170
+    },
+    {
+      "id": "health-report",
+      "lane": "mac-deploy",
+      "col": 5,
+      "type": "external",
+      "label": "health · 성공 보고",
+      "sublabel": "GitHub 배포 결과에 반영",
+      "width": 170
+    }
+  ],
+  "edges": [
+    {
+      "id": "frontend-change",
+      "from": "main-push",
+      "to": "frontend-checks",
+      "label": "프런트 변경",
+      "role": "branch"
+    },
+    {
+      "id": "frontend-green",
+      "from": "frontend-checks",
+      "to": "cloud-publish",
+      "label": "CI 통과",
+      "role": "branch"
+    },
+    {
+      "id": "frontend-live",
+      "from": "cloud-publish",
+      "to": "frontend-ready",
+      "label": "게시 성공",
+      "role": "branch"
+    },
+    {
+      "id": "backend-change",
+      "from": "main-push",
+      "to": "backend-checks",
+      "label": "백엔드 변경",
+      "role": "main"
+    },
+    {
+      "id": "backend-green",
+      "from": "backend-checks",
+      "to": "deployment-request",
+      "label": "CI 통과",
+      "role": "main"
+    },
+    {
+      "id": "pull-request",
+      "from": "deployment-request",
+      "to": "poll-verify",
+      "label": "Mac이 조회",
+      "role": "main"
+    },
+    {
+      "id": "validated",
+      "from": "poll-verify",
+      "to": "stop-backup",
+      "label": "검증 통과",
+      "role": "main"
+    },
+    {
+      "id": "backup-safe",
+      "from": "stop-backup",
+      "to": "switch-start",
+      "label": "백업 성공",
+      "role": "main"
+    },
+    {
+      "id": "running",
+      "from": "switch-start",
+      "to": "health-report",
+      "label": "시작 확인",
+      "role": "main"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "CI = 검사 / CD = 운영 반영",
+      "items": [
+        "PR은 검사만, main push는 검사 후 배포",
+        "양쪽 변경 시 두 workflow가 독립 실행"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "배포 중 유지되는 것",
+      "items": [
+        "기존 DB·파일·개인 API 키를 계속 사용",
+        "Tunnel·새벽 4시 백업 예약 유지"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "백엔드는 잠시 중지됨",
+      "items": [
+        "백업 실패 시 기존 서버로 다시 시작",
+        "새 서버 health 실패 시 정지 후 복구 판단"
+      ]
+    }
+  ]
+}

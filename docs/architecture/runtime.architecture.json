@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "사용자가 접속하면 어디서 처리될까?",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1360,
+      800
+    ],
+    "repository": {
+      "url": "https://github.com/Yelihi/resume-agent",
+      "revision": "d50233b556bc223db2486122ce1780e98537358d"
+    }
+  },
+  "components": [
+    {
+      "id": "reader",
+      "type": "frontend",
+      "label": "사용자 브라우저",
+      "sublabel": "React 화면이 실행되는 곳",
+      "pos": [
+        45,
+        145
+      ],
+      "size": [
+        200,
+        78
+      ]
+    },
+    {
+      "id": "access",
+      "type": "security",
+      "label": "Cloudflare Access",
+      "sublabel": "이메일 인증 · MFA",
+      "pos": [
+        370,
+        145
+      ],
+      "size": [
+        220,
+        78
+      ]
+    },
+    {
+      "id": "edge",
+      "type": "cloud",
+      "label": "Cloudflare Worker",
+      "sublabel": "화면 파일 제공 · API 전달",
+      "pos": [
+        715,
+        145
+      ],
+      "size": [
+        220,
+        78
+      ],
+      "sources": [
+        {
+          "path": "deploy/cloudflare/worker.mjs",
+          "label": "요청 분기와 전달"
+        }
+      ]
+    },
+    {
+      "id": "private-service",
+      "type": "cloud",
+      "label": "VPC Service",
+      "sublabel": "Mac의 API만 연결",
+      "pos": [
+        1080,
+        145
+      ],
+      "size": [
+        220,
+        78
+      ]
+    },
+    {
+      "id": "connector",
+      "type": "backend",
+      "label": "cloudflared",
+      "sublabel": "Mac에서 연결을 유지",
+      "pos": [
+        1080,
+        410
+      ],
+      "size": [
+        220,
+        78
+      ]
+    },
+    {
+      "id": "python-api",
+      "type": "backend",
+      "label": "FastAPI 서버",
+      "sublabel": "JWT 검증 · 저장 · OCR",
+      "pos": [
+        715,
+        410
+      ],
+      "size": [
+        220,
+        78
+      ],
+      "sources": [
+        {
+          "path": "backend/app/main.py",
+          "label": "API 서버"
+        }
+      ]
+    },
+    {
+      "id": "ai-provider",
+      "type": "external",
+      "label": "OpenAI API",
+      "sublabel": "개인 API 키로 AI 검토",
+      "pos": [
+        370,
+        410
+      ],
+      "size": [
+        220,
+        78
+      ]
+    },
+    {
+      "id": "production-data",
+      "type": "database",
+      "label": "외장 SSD",
+      "sublabel": "SQLite · 이력서 · 첨부",
+      "pos": [
+        715,
+        670
+      ],
+      "size": [
+        220,
+        78
+      ]
+    },
+    {
+      "id": "encrypted-copy",
+      "type": "database",
+      "label": "Mac 내장 디스크",
+      "sublabel": "restic 암호화 백업",
+      "pos": [
+        1080,
+        670
+      ],
+      "size": [
+        220,
+        78
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Cloudflare · 인터넷 접속과 인증",
+      "wraps": [
+        "access",
+        "edge",
+        "private-service"
+      ],
+      "pad": 25
+    },
+    {
+      "kind": "region",
+      "label": "집의 Mac mini · macOS 로그인 상태에서 실행",
+      "wraps": [
+        "connector",
+        "python-api",
+        "production-data",
+        "encrypted-copy"
+      ],
+      "pad": 25
+    }
+  ],
+  "connections": [
+    {
+      "id": "public-https",
+      "from": "reader",
+      "to": "access",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "authenticated",
+      "from": "access",
+      "to": "edge",
+      "label": "인증된 요청",
+      "variant": "security"
+    },
+    {
+      "id": "api-path",
+      "from": "edge",
+      "to": "private-service",
+      "label": "/api/*",
+      "variant": "emphasis"
+    },
+    {
+      "id": "tunnel-transport",
+      "from": "private-service",
+      "to": "connector",
+      "label": "암호화 Tunnel",
+      "variant": "security",
+      "labelAt": [
+        1190,
+        237
+      ]
+    },
+    {
+      "id": "local-http",
+      "from": "connector",
+      "to": "python-api",
+      "label": "HTTP :8000",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ai-call",
+      "from": "python-api",
+      "to": "ai-provider",
+      "label": "HTTPS · 검토 요청"
+    },
+    {
+      "id": "persist",
+      "from": "python-api",
+      "to": "production-data",
+      "label": "조회 · 저장",
+      "labelAt": [
+        825,
+        502
+      ]
+    },
+    {
+      "id": "backup-copy",
+      "from": "production-data",
+      "to": "encrypted-copy",
+      "label": "예약 · 배포 전 백업",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "화면과 API는 같은 주소",
+      "items": [
+        "화면 파일은 Cloudflare → 브라우저로 반환",
+        "API 응답·검토 SSE는 같은 경로로 돌아옴"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "원본 데이터는 Mac에",
+      "items": [
+        "Cloudflare는 요청·응답을 중계",
+        "AI 검토에 필요한 내용은 OpenAI로 전송"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "화살표는 요청 전달 방향",
+      "items": [
+        "Tunnel 연결은 Mac이 외부로 먼저 시작",
+        "FastAPI는 127.0.0.1:8000만 수신"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Volumes/Storage2TB/Projects/github/resume-agent/docs/architecture/runtime.architecture.json",
+  "output": "/Volumes/Storage2TB/Projects/github/resume-agent/docs/architecture/runtime.html",
+  "specification": {
+    "sha256": "3a0684a3682185225150962832447b4dee4d03a2506939d7b3b2a8b4fff881c2",
+    "bytes": 5311
+  },
+  "artifact": {
+    "sha256": "8ae54a58e73c5c1da1e36d14a07af1ac18806aba481d3b2df29fb21d887d1a10",
+    "bytes": 810665
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  },
+  "evidence": {
+    "verified": true,
+    "repository": "https://github.com/Yelihi/resume-agent",
+    "revision": "d50233b556bc223db2486122ce1780e98537358d",
+    "references": 2
+  }
+}
