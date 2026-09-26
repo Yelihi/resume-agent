@@ -1385,6 +1385,18 @@ dialog:not([open]) { display: none; }
 .extraction-dialog[open] { display: flex; flex-direction: column; }
 .extraction-dialog::backdrop { background: var(--backdrop); }
 .extraction-dialog header p { margin: var(--space-2) 0 0; font-size: var(--text-sm); color: var(--muted); }
+.resume-processing-dialog { width: min(560px, calc(100vw - 32px)); }
+.resume-processing-dialog header p { overflow-wrap: anywhere; }
+.resume-processing-content { overflow: auto; padding: var(--space-5); }
+.resume-processing-steps { display: flex; flex-wrap: wrap; gap: var(--space-4); margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: var(--text-sm); }
+.resume-processing-steps li { display: flex; align-items: center; gap: var(--space-2); }
+.resume-processing-steps li[aria-current], .resume-processing-steps li[data-complete] { color: var(--ink); }
+.resume-processing-steps li[aria-current] { font-weight: 700; }
+.resume-processing-steps li > span { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 50%; }
+.resume-processing-steps li[aria-current] > span { color: var(--surface); background: var(--ink); }
+.resume-processing-hint { color: var(--muted); font-size: var(--text-sm); line-height: 1.6; }
+.resume-processing-content .pdf-viewer { padding: var(--space-4); }
+.resume-processing-content .document-skeleton { aspect-ratio: auto; padding: var(--space-5); gap: var(--space-5); }
 .extraction-comparison { display: grid; grid-template-columns: minmax(0, 3fr) minmax(240px, 2fr); min-height: 0; overflow: auto; }
 .extraction-original { min-width: 0; background: var(--workspace); }
 .extraction-original .flow-viewer { min-height: 0; padding: var(--space-5); }

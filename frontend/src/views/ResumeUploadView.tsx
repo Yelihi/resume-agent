@@ -6,6 +6,6 @@ export function ResumeUploadView() {
   const { view, task, locked, navigation, resumeWorkflow } = application;
   const { context } = view;
   if (!view.isNew && !context) return <NotFoundView missingContext />;
-  return <ResumeUpload contextName={context?.name} isNew={view.isNew} draft={resumeWorkflow.draft} busy={task.busy} locked={locked} onChange={resumeWorkflow.updateDraft}
+  return <ResumeUpload contextName={context?.name} isNew={view.isNew} draft={resumeWorkflow.draft} busy={task.busy} locked={locked} processingStage={resumeWorkflow.processingStage} onChange={resumeWorkflow.updateDraft}
     onBack={() => navigation.navigate(context ? `/contexts/${context.id}` : "/contexts")} onSave={() => void resumeWorkflow.saveResume(context)} />;
 }

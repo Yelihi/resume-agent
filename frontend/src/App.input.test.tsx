@@ -1,5 +1,5 @@
 import { createTestRouter } from "./test/router";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import { App } from "./App";
@@ -7,6 +7,12 @@ import { IndexedDbWorkspaceRepository } from "./infrastructure/workspace/Indexed
 import { resumeInput } from "./test/fixtures";
 
 const policy = { maximumFileSizeBytes: { pdf: 20, image: 20, docx: 20, txt: 5 }, maximumDirectTextCharacters: 100 };
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
+}
 function setup(path = "/contexts/new", overrides = {}) {
   window.history.replaceState(null, "", path);
   const store = new IndexedDbWorkspaceRepository(`input-${crypto.randomUUID()}`);
@@ -23,6 +29,54 @@ it("creates an isolated context only after extraction succeeds", async () => {
   expect(services.extractText).toHaveBeenCalledWith("경력 한 줄");
   expect((await store.load()).contexts).toHaveLength(1);
 });
+it("shows actual preparation, file conversion and persistence stages until saving finishes", async () => {
+  const validation = deferred<typeof policy>();
+  const extracted = deferred<{ kind: "flow"; document: ReturnType<typeof resumeInput>["document"] }>();
+  const saving = deferred<void>();
+  const { store, services } = setup("/contexts/new", { getValidationPolicy: () => validation.promise, extractFile: vi.fn(() => extracted.promise) });
+  const createContext = store.createContext.bind(store);
+  vi.spyOn(store, "createContext").mockImplementation(async (...args) => { await saving.promise; return createContext(...args); });
+  await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "진행 확인");
+  await userEvent.upload(screen.getByLabelText("이력서 파일"), new File(["hello"], "resume.txt", { type: "text/plain" }));
+  await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  const dialog = await screen.findByRole("dialog", { name: "이력서를 준비하고 있습니다" });
+  expect(within(dialog).getByText("입력 확인")).toHaveAttribute("aria-current", "step");
+  expect(dialog.querySelector(".document-skeleton")).toBeInTheDocument();
+  expect(screen.getByLabelText("이력서 파일")).toBeDisabled();
+  fireEvent(dialog, new Event("cancel", { cancelable: true }));
+  expect(dialog).toHaveAttribute("open");
+  await act(async () => validation.resolve(policy));
+  expect(within(dialog).getByText("문서 변환")).toHaveAttribute("aria-current", "step");
+  expect(within(dialog).getByRole("status")).toHaveTextContent("이력서의 글자와 문서 구조를 읽고 있습니다.");
+  expect(store.getSnapshot().contexts).toHaveLength(0);
+  expect(services.extractFile).toHaveBeenCalledTimes(1);
+  await act(async () => extracted.resolve({ kind: "flow", document: resumeInput().document }));
+  expect(within(dialog).getByText("저장", { exact: true })).toHaveAttribute("aria-current", "step");
+  expect(store.getSnapshot().contexts).toHaveLength(0);
+  await act(async () => saving.resolve());
+  await screen.findByRole("button", { name: "이력서 검토하기" });
+  expect(screen.queryByRole("dialog", { name: "이력서를 준비하고 있습니다" })).not.toBeInTheDocument();
+  expect(store.getSnapshot().contexts).toHaveLength(1);
+});
+
+it("removes the progress dialog after failure and retries with the selected file intact", async () => {
+  const extracted = deferred<never>();
+  const { store, services } = setup("/contexts/new", { extractFile: vi.fn().mockImplementationOnce(() => extracted.promise).mockResolvedValue({ kind: "flow", document: resumeInput().document }) });
+  await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "재시도");
+  const file = new File(["hello"], "resume.txt", { type: "text/plain" });
+  await userEvent.upload(screen.getByLabelText("이력서 파일"), file);
+  await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  await screen.findByRole("dialog", { name: "이력서를 준비하고 있습니다" });
+  await act(async () => extracted.reject(new Error("변환 실패")));
+  expect(await screen.findByRole("alert")).toHaveTextContent("변환 실패");
+  expect(screen.queryByRole("dialog", { name: "이력서를 준비하고 있습니다" })).not.toBeInTheDocument();
+  expect(screen.getByLabelText("이력서 파일")).toBeEnabled();
+  expect(store.getSnapshot().contexts).toHaveLength(0);
+  await userEvent.click(screen.getByRole("button", { name: "확인" }));
+  await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  await screen.findByRole("button", { name: "이력서 검토하기" });
+  expect(services.extractFile).toHaveBeenLastCalledWith(file, "txt");
+});
 it("rejects an oversized file before extraction", async () => {
   const { store, services } = setup();
   await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "A");
@@ -37,12 +91,16 @@ it("requires extraction confirmation before saving a suspect resume", async () =
   const document = { ...resumeInput("확인할 문장").document, extraction: { status: "needs_review", confirmed: false, issues: [
     { stage: "assessment", code: "LOW_OCR_CONFIDENCE", message: "원본과 비교해 주세요.", lineIds: ["f-l1"], recovered: false },
   ] } };
-  const { store } = setup("/contexts/new", { extractText: vi.fn().mockResolvedValue(document) });
+  const extracted = deferred<typeof document>();
+  const { store } = setup("/contexts/new", { extractText: vi.fn(() => extracted.promise) });
   await userEvent.type(await screen.findByLabelText("작업 공간 이름"), "확인 테스트");
   await userEvent.click(screen.getByRole("tab", { name: "직접 입력" }));
   await userEvent.type(screen.getByLabelText("이력서 텍스트"), "확인할 문장");
   await userEvent.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  await screen.findByRole("dialog", { name: "이력서를 준비하고 있습니다" });
+  await act(async () => extracted.resolve(document));
   expect(await screen.findByRole("dialog", { name: "추출 내용 확인" })).toHaveAttribute("open");
+  expect(screen.queryByRole("dialog", { name: "이력서를 준비하고 있습니다" })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "확인 후 저장" })).toBeDisabled();
   expect((await store.load()).contexts).toHaveLength(0);
   await userEvent.click(screen.getByRole("checkbox", { name: "원본과 비교해 검토에 사용할 수 있음을 확인했습니다." }));
