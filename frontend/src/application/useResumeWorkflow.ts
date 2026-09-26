@@ -26,7 +26,7 @@ export function useResumeWorkflow({ store, services, resolvePolicy, runTask, onS
     if (context) await store.addResumeVersion(context.id, input, context.latestVersionId);
     if (ownsInput()) { setPendingResume(null); onSaved(contextId); }
   }
-  const saveResume = (context?: Context) => runTask(async () => {
+  const saveResume = () => runTask(async () => {
     setProcessingStage("preparing");
     try {
       const policy = await resolvePolicy();
@@ -45,18 +45,21 @@ export function useResumeWorkflow({ store, services, resolvePolicy, runTask, onS
         input = { inputType: "file", displayName: draft.file.name, original: draft.file, documentKind: extracted.kind, document: extracted.document };
       }
       if (!ownsDraft(draft)) return;
-      if (input.document.extraction?.status === "needs_review") setPendingResume(input);
-      else {
-        setProcessingStage("saving");
-        await persist(input, context);
-      }
+      setPendingResume(input);
     } finally {
       if (ownsDraft(draft)) setProcessingStage(null);
     }
   }, "이력서를 저장하지 못했습니다.");
   const confirmExtraction = (context?: Context) => runTask(async () => {
     if (!pendingResume) return;
-    await persist({ ...pendingResume, document: { ...pendingResume.document, extraction: { ...pendingResume.document.extraction!, confirmed: true } } }, context, () => ownsPendingResume(pendingResume) && ownsDraft(draft));
+    setProcessingStage("saving");
+    try {
+      const extraction = pendingResume.document.extraction;
+      const input = extraction ? { ...pendingResume, document: { ...pendingResume.document, extraction: { ...extraction, confirmed: true } } } : pendingResume;
+      await persist(input, context, () => ownsPendingResume(pendingResume) && ownsDraft(draft));
+    } finally {
+      if (ownsDraft(draft)) setProcessingStage(null);
+    }
   }, "이력서를 저장하지 못했습니다.");
   const reset = () => { setDraft(emptyDraft); setPendingResume(null); setProcessingStage(null); };
   return { draft, updateDraft, pendingResume, processingStage, saveResume, confirmExtraction, cancelExtraction: () => setPendingResume(null), reset,

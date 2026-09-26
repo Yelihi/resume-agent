@@ -53,12 +53,12 @@ it("announces route errors and recovers through the workspace link", async () =>
   const view = render(<App router={router} store={repository()} services={services()} />);
   try {
     await screen.findByRole("heading", { name: "화면을 불러오지 못했습니다" });
-    expect(document.title).toBe("화면을 불러오지 못했습니다 · Resume Review");
+    await waitFor(() => expect(document.title).toBe("화면을 불러오지 못했습니다 · Resume Review"));
     expect(screen.getByRole("main")).toHaveFocus();
     expect(screen.queryByText("internal failure details")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("link", { name: "작업 공간 목록" }));
     await screen.findByRole("heading", { name: "이력서 작업 공간" });
-    expect(document.title).toBe("이력서 작업 공간 · Resume Review");
+    await waitFor(() => expect(document.title).toBe("이력서 작업 공간 · Resume Review"));
   } finally { view.unmount(); router.dispose(); }
 });
 

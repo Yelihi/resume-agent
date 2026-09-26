@@ -19,11 +19,15 @@ it("saves and reloads preview text locally, exports that store, and refuses back
   await user.click(screen.getByRole("tab", { name: "직접 입력" }));
   await user.type(screen.getByLabelText("이력서 텍스트"), "프런트엔드 개발\nReact 경험");
   await user.click(screen.getByRole("button", { name: "작업 공간 만들기" }));
+  await user.click(await screen.findByRole("checkbox", { name: "원본과 비교해 검토에 사용할 수 있음을 확인했습니다." }));
+  await user.click(screen.getByRole("button", { name: "확인 후 저장" }));
   await screen.findByRole("heading", { name: "미리보기 지원" });
   await user.click(screen.getByRole("button", { name: "수정본 업로드" }));
   await user.click(await screen.findByRole("tab", { name: "직접 입력" }));
   await user.type(screen.getByLabelText("이력서 텍스트"), "개선한 이력서");
   await user.click(screen.getByRole("button", { name: "수정본 저장" }));
+  await user.click(await screen.findByRole("checkbox", { name: "원본과 비교해 검토에 사용할 수 있음을 확인했습니다." }));
+  await user.click(screen.getByRole("button", { name: "확인 후 저장" }));
   await screen.findByText("버전 2 · 직접 입력 이력서");
   await user.click(screen.getByRole("button", { name: "이력서 검토하기" }));
   expect(await screen.findByRole("dialog", { name: "요청 오류" })).toHaveTextContent("미리보기에서는");
