@@ -529,6 +529,25 @@ export interface components {
             /** Results */
             results: components["schemas"]["SuggestionDTO"][];
         };
+        /** AuthoringInput */
+        AuthoringInput: {
+            /** Title */
+            title: string;
+            /** Period */
+            period: string;
+            /**
+             * Markdown
+             * @default
+             */
+            markdown: string;
+            /** Sources */
+            sources?: components["schemas"]["Source"][];
+            /**
+             * Usetemplate
+             * @default true
+             */
+            useTemplate: boolean;
+        };
         /** BackupStatus */
         BackupStatus: {
             /** Lastattemptat */
@@ -665,20 +684,6 @@ export interface components {
             pageNumber: number;
             /** Blocks */
             blocks: components["schemas"]["PageBlock"][];
-        };
-        /** DraftInput */
-        DraftInput: {
-            /** Title */
-            title: string;
-            /** Period */
-            period: string;
-            /**
-             * Markdown
-             * @default
-             */
-            markdown: string;
-            /** Sources */
-            sources?: components["schemas"]["Source"][];
         };
         /** Experience */
         Experience: {
@@ -1427,6 +1432,8 @@ export interface components {
             text: string;
             /** Verified */
             verified: boolean;
+            /** Failurereason */
+            failureReason?: ("content_unavailable" | "source_unverified") | null;
         };
         /** SourceNote */
         "SourceNote-Output": {
@@ -1436,6 +1443,8 @@ export interface components {
             text: string;
             /** Verified */
             verified: boolean;
+            /** Failurereason */
+            failureReason?: ("content_unavailable" | "source_unverified") | null;
         };
         /** SpellDiagnostic */
         SpellDiagnostic: {
@@ -2139,7 +2148,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DraftInput"];
+                "application/json": components["schemas"]["AuthoringInput"];
             };
         };
         responses: {

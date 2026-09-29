@@ -6,7 +6,7 @@ from pydantic import Field, HttpUrl
 from app.document_processing.models import FlowDocument, ModuleErrorDTO, PageDocument
 from app.review.contracts import (ContextAnalysis, ExperienceRecommendation, MaterialReviewDTO, ModuleResult,
                                   ResolutionCheck, ReviewContext, SpellDiagnostic, SuggestionDTO)
-from app.workspace.models import (Contract, ExperienceDocument, ExperienceInput, FileReference,
+from app.workspace.models import (Contract, ExperienceContent, ExperienceDocument, FileReference,
                                   Identifier, MaterialDraft, Text)
 from app.workspace.repository import COLLECTIONS, get, require
 
@@ -110,7 +110,7 @@ class ReviewMaterial(Contract):
     materialVersionId: Identifier
 
 
-class Experience(ExperienceInput):
+class Experience(ExperienceContent):
     id: Identifier
     revision: int = Field(ge=1)
     createdAt: str = Field(max_length=100)
@@ -173,8 +173,10 @@ def validate_relationships(state):
         experience = get(state, "experiences", document["experienceId"])
         require(document["input"]["experience"]["id"] == experience["id"], "경험 연결이 일치하지 않습니다.", 422)
         require(get(state, "resumeVersions", document["input"]["resume"]["id"])["contextId"] == document["contextId"], "작성본의 이력서 연결이 일치하지 않습니다.", 422)
-        source_ids = {source["id"] for source in experience["sources"]}
-        require(all(source["id"] in source_ids for source in document["input"]["experience"]["sources"]) and all(note["sourceId"] in source_ids for note in document["sourceNotes"]), "작성본의 출처 연결이 일치하지 않습니다.", 422)
+        historical_ids = [source["id"] for source in document["input"]["experience"]["sources"]]
+        require(len(historical_ids) == len(set(historical_ids)), "중복된 경험 출처입니다.", 422)
+        source_ids = {source["id"] for source in experience["sources"]} | set(historical_ids)
+        require(all(note["sourceId"] in source_ids for note in document["sourceNotes"]), "작성본의 출처 연결이 일치하지 않습니다.", 422)
         for material in document["input"]["materials"]:
             get(state, "materials", material["id"])
             require(any(version["materialId"] == material["id"] and all(version[key] == material[key] for key in ("title", "content", "materialType")) for version in state["materialVersions"]), "작성본의 자료 내용이 일치하지 않습니다.", 422)

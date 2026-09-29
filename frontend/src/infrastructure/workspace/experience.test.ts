@@ -52,3 +52,42 @@ it("keeps append-only sources and independent context documents, rejects stale s
   expect(store.getSnapshot().experienceDocuments.map(item => item.contextId)).toEqual([b]);
   expect(store.getSnapshot().experiences[0].sources).toHaveLength(2);
 });
+
+it("removes only explicitly selected sources on save and preserves editable historical documents", async () => {
+  const store = new IndexedDbWorkspaceRepository(`experience-removal-${crypto.randomUUID()}`);
+  const contextId = await store.createContext("A", resumeInput());
+  const original = source(), kept = source("남길 원본"), appended = source("새 원본");
+  const experienceId = await store.saveExperience({ title: "작업", period: "", sources: [original, kept] });
+  const state = store.getSnapshot();
+  const document = { ...result, id: "history", contextId, experienceId,
+    input: { experience: state.experiences[0], resume: { id: state.contexts[0].latestVersionId!, text: "이력서" }, materials: [] },
+    sourceNotes: [{ sourceId: original.id, text: "원본 참고", verified: true }] };
+  await store.saveExperienceDocument(document);
+  const update = { title: "작업", period: "", sources: [appended], removedSourceIds: [original.id] };
+  const before = await store.load();
+  for (const removedSourceIds of [["unknown"], [original.id, original.id]]) {
+    await expect(store.saveExperience({ ...update, removedSourceIds }, experienceId, 1)).rejects.toThrow("삭제할 원본");
+    expect(await store.load()).toEqual(before);
+  }
+  await expect(store.saveExperience(update, experienceId, 2)).rejects.toThrow("변경");
+  await store.saveExperience(update, experienceId, 1);
+  expect(store.getSnapshot().experiences[0].sources).toEqual([kept, appended]);
+  expect(store.getSnapshot().experiences[0]).not.toHaveProperty("removedSourceIds");
+  await store.saveExperienceDocument({ ...document, markdown: "과거 작성본 수정" }, 1);
+  await expect(store.saveExperienceDocument({ ...document, id: "new-history" })).rejects.toThrow("원본 연결");
+  await expect(store.saveExperienceDocument({ ...document, input: { ...document.input, experience: {
+    ...document.input.experience, sources: [{ ...original, text: "위조된 원본" }],
+  } } }, 2)).rejects.toThrow("원본 연결");
+  await store.saveExperience({ title: "작업", period: "", sources: [], removedSourceIds: [kept.id] }, experienceId, 2);
+  expect(store.getSnapshot().experiences[0].sources).toEqual([appended]);
+});
+
+it("applies the source count limit after removal", async () => {
+  const store = new IndexedDbWorkspaceRepository(`experience-limit-${crypto.randomUUID()}`);
+  const sources = Array.from({ length: 100 }, () => source());
+  const id = await store.saveExperience({ title: "작업", period: "", sources });
+  const update = { title: "작업", period: "", sources: [source()] };
+  await expect(store.saveExperience(update, id, 1)).rejects.toThrow("100개");
+  await store.saveExperience({ ...update, removedSourceIds: [sources[0].id] }, id, 1);
+  expect(store.getSnapshot().experiences[0].sources).toHaveLength(100);
+});

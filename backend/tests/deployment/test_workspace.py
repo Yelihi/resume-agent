@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
@@ -110,6 +112,67 @@ def test_experience_revision_and_document_relations(tmp_path):
     assert repo.load("alice")["workspace"]["experiences"][0]["revision"] == 2
 
 
+def test_experience_source_removal_is_atomic_owned_and_keeps_editable_history(tmp_path, monkeypatch):
+    repo = repository(tmp_path)
+    monkeypatch.setattr(files, "get_database", lambda: repo.database)
+    app = FastAPI()
+    app.include_router(files.router)
+    app.dependency_overrides[get_current_user] = lambda: User("alice", "alice@test")
+    command = lambda operation, *args: repo.command("alice", operation, list(args))
+    with TestClient(app) as client:
+        ref = client.post("/api/files", files={"file": ("source.txt", b"source", "text/plain")}).json()
+        source = dict(id="source", kind="file", name="source", text="content", original=ref, createdAt="2026-09-29")
+        draft = dict(title="work", period="", sources=[source], markdown="work", metadata="skill")
+        experience_id = command("saveExperience", draft)["result"]
+        context = command("createContext", "work", resume())["result"]
+        state = repo.load("alice")["workspace"]
+        document = dict(id="document", contextId=context, experienceId=experience_id,
+                        input=dict(experience={key: value for key, value in state["experiences"][0].items() if key not in {"createdAt", "updatedAt"}},
+                                   resume=dict(id=state["contexts"][0]["latestVersionId"], text="resume"), materials=[]),
+                        markdown="written", summary="summary", questions=[],
+                        sourceNotes=[dict(sourceId="source", text="source note", verified=True)])
+        command("saveExperienceDocument", document)
+        disposable = client.post("/api/files", files={"file": ("unused-source.txt", b"disposable", "text/plain")}).json()
+        command("saveExperience", dict(title="work", period="", sources=[{**source, "id": "disposable", "original": disposable}]), experience_id, 1)
+        update = dict(title="work", period="", sources=[], removedSourceIds=["source", "disposable"])
+        before = repo.load("alice")
+        for bad_ids in [["unknown"], ["source", "source"]]:
+            with pytest.raises(HTTPException):
+                command("saveExperience", {**update, "removedSourceIds": bad_ids}, experience_id, 2)
+            assert repo.load("alice") == before
+        with pytest.raises(HTTPException):
+            command("saveExperience", update, experience_id, 1)
+        with pytest.raises(HTTPException):
+            repo.command("bob", "saveExperience", [update, experience_id, 2])
+        assert repo.load("alice") == before
+        command("saveExperience", update, experience_id, 2)
+        experience = repo.load("alice")["workspace"]["experiences"][0]
+        assert experience["sources"] == [] and "removedSourceIds" not in experience
+        assert client.get(f"/api/files/{ref['fileId']}").content == b"source"
+        assert client.get(f"/api/files/{disposable['fileId']}").status_code == 404
+        assert not (tmp_path / "files" / disposable["fileId"]).exists()
+        command("saveExperienceDocument", {**document, "markdown": "edited history"}, 1)
+        with pytest.raises(HTTPException):
+            command("saveExperienceDocument", {**document, "id": "forged-new"})
+        forged_input = {**document["input"], "experience": {**document["input"]["experience"], "sources": [{**source, "text": "forged"}]}}
+        with pytest.raises(HTTPException):
+            command("saveExperienceDocument", {**document, "input": forged_input}, 2)
+        command("deleteExperienceDocument", document["id"])
+        assert client.get(f"/api/files/{ref['fileId']}").status_code == 404
+        assert not (tmp_path / "files" / ref["fileId"]).exists()
+
+
+def test_experience_source_limit_applies_after_removal(tmp_path):
+    repo = repository(tmp_path)
+    sources = [dict(id=str(index), kind="note", name="note", text="content", createdAt="2026-09-29") for index in range(100)]
+    experience = repo.command("alice", "saveExperience", [dict(title="work", period="", sources=sources)])["result"]
+    update = dict(title="work", period="", sources=[{**sources[0], "id": "new"}])
+    with pytest.raises(HTTPException):
+        repo.command("alice", "saveExperience", [update, experience, 1])
+    result = repo.command("alice", "saveExperience", [{**update, "removedSourceIds": ["0"]}, experience, 1])
+    assert len(result["workspace"]["experiences"][0]["sources"]) == 100
+
+
 def test_import_atomic_idempotent_and_rejects_bad_relationships(tmp_path):
     repo = repository(tmp_path)
     repo.command("alice", "createContext", ["work", resume()])
@@ -128,6 +191,44 @@ def test_import_atomic_idempotent_and_rejects_bad_relationships(tmp_path):
     with pytest.raises(HTTPException):
         import_workspace(repo, "charlie", ImportRequest(importId="bad", workspace=snapshot))
     assert repo.load("charlie")["revision"] == 0
+
+
+def test_import_preserves_removed_source_history_and_validates_references(tmp_path):
+    repo = repository(tmp_path)
+    command = lambda operation, *args: repo.command("alice", operation, list(args))
+    context = command("createContext", "work", resume())["result"]
+    source = dict(id="source", kind="note", name="note", text="content", createdAt="2026-09-29")
+    experience_id = command("saveExperience", dict(title="work", period="", sources=[source], markdown="work", metadata="skill"))["result"]
+    state = repo.load("alice")["workspace"]
+    document = dict(id="document", contextId=context, experienceId=experience_id,
+                    input=dict(experience={key: value for key, value in state["experiences"][0].items() if key not in {"createdAt", "updatedAt"}},
+                               resume=dict(id=state["contexts"][0]["latestVersionId"], text="resume"), materials=[]),
+                    markdown="written", summary="summary", questions=[],
+                    sourceNotes=[dict(sourceId="source", text="source note", verified=True)])
+    command("saveExperienceDocument", document)
+    command("saveExperience", dict(title="work", period="", sources=[], removedSourceIds=["source"]), experience_id, 1)
+    snapshot = repo.load("alice")["workspace"]
+    invalid = deepcopy(snapshot)
+    invalid["experiences"][0]["removedSourceIds"] = ["source"]
+    with pytest.raises(ValidationError):
+        ImportRequest(importId="command-only", workspace=invalid)
+    invalid = deepcopy(snapshot)
+    invalid["experienceDocuments"][0]["input"]["experience"]["sources"].append(source)
+    with pytest.raises(HTTPException, match="중복된 경험 출처"):
+        import_workspace(repo, "bob", ImportRequest(importId="duplicate", workspace=invalid))
+    invalid = deepcopy(snapshot)
+    invalid["experienceDocuments"][0]["sourceNotes"][0]["sourceId"] = "unknown"
+    with pytest.raises(HTTPException, match="출처 연결"):
+        import_workspace(repo, "bob", ImportRequest(importId="unknown-note", workspace=invalid))
+    invalid = deepcopy(snapshot)
+    invalid["experienceDocuments"][0]["input"]["experience"]["sources"][0].update(kind="file", original={"fileId": "not-owned"})
+    with pytest.raises(HTTPException, match="원본 파일"):
+        import_workspace(repo, "bob", ImportRequest(importId="unowned-file", workspace=invalid))
+    assert repo.load("bob")["revision"] == 0
+    imported = import_workspace(repo, "bob", ImportRequest(importId="history", workspace=snapshot))
+    assert imported["workspace"] == snapshot
+    repo.command("bob", "saveExperienceDocument", [{**document, "markdown": "imported history edit"}, 1])
+    assert repo.load("bob")["workspace"]["experienceDocuments"][0]["revision"] == 2
 
 
 def test_restart_marks_pending_as_retryable_without_running_ai(tmp_path):

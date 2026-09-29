@@ -131,15 +131,20 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
   }
 
   async saveExperience(input: ExperienceInput, id?: string, baseRevision?: number): Promise<string> {
-    if ((!input.sources.length && !input.markdown?.trim()) || input.sources.some(source => !source.text.trim() && !source.url && !source.original)) throw new Error("메모, 링크 또는 파일을 추가해 주세요.");
+    if (input.sources.some(source => !source.text.trim() && !source.url && !source.original)) throw new Error("메모, 링크 또는 파일을 추가해 주세요.");
     if (input.markdown !== undefined && (!input.markdown.trim() || input.markdown.length > 60_000 || !input.metadata?.trim() || input.metadata.length > 12_000)) throw new Error("경험 본문과 메타데이터를 확인해 주세요.");
     return this.write(async tx => {
       const old = id ? requireValue(await tx.objectStore("experiences").get(id), "경험 기록을 찾을 수 없습니다.") : undefined;
       if (old && old.revision !== baseRevision) throw new Error("경험 기록이 변경됐습니다. 최신 기록을 다시 열어 주세요.");
+      const removed = input.removedSourceIds ?? [];
+      if (new Set(removed).size !== removed.length || removed.some(id => !old?.sources.some(source => source.id === id))) throw new Error("삭제할 원본 자료를 다시 확인해 주세요.");
+      const sources = [...(old?.sources ?? []).filter(source => !removed.includes(source.id)), ...input.sources];
+      if (!sources.length && !(input.markdown ?? old?.markdown)?.trim()) throw new Error("메모, 링크 또는 파일을 추가해 주세요.");
+      if (sources.length > 100) throw new Error("한 경험에는 원본을 100개까지 보관할 수 있습니다.");
       if (new Set(input.sources.map(source => source.id)).size !== input.sources.length || input.sources.some(source => old?.sources.some(saved => saved.id === source.id))) throw new Error("이미 저장한 원본은 다시 추가할 수 없습니다.");
       const experienceId = id ?? uuid(), updatedAt = now();
       await tx.objectStore("experiences").put({ id: experienceId, title: input.title.trim() || old?.title || input.markdown?.split("\n")[0].replace(/^#+\s*/, "").slice(0, 80) || input.sources[0]?.name.slice(0, 80) || "경험",
-        period: input.period, markdown: input.markdown ?? old?.markdown, metadata: input.metadata ?? old?.metadata, sources: [...(old?.sources ?? []), ...input.sources], revision: (old?.revision ?? 0) + 1,
+        period: input.period, markdown: input.markdown ?? old?.markdown, metadata: input.metadata ?? old?.metadata, sources, revision: (old?.revision ?? 0) + 1,
         createdAt: old?.createdAt ?? updatedAt, updatedAt });
       return experienceId;
     });
@@ -151,11 +156,15 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
       requireValue(await tx.objectStore("contexts").get(document.contextId), "작업 공간을 찾을 수 없습니다.");
       const experience = requireValue(await tx.objectStore("experiences").get(document.experienceId), "경험 기록을 찾을 수 없습니다.");
       const resume = await tx.objectStore("resumeVersions").get(document.input.resume.id);
-      if (resume?.contextId !== document.contextId || document.input.experience.id !== experience.id ||
-          document.input.experience.sources.some(source => !experience.sources.some(original => original.id === source.id))) throw new Error("작성본의 원본 연결을 확인해 주세요.");
       const old = await tx.objectStore("experienceDocuments").get(document.id);
       if (old && (old.contextId !== document.contextId || old.experienceId !== document.experienceId || old.revision !== baseRevision)) throw new Error("다른 화면에서 작성본을 수정했습니다. 최신 작성본을 다시 열어 주세요.");
       if (!old && baseRevision !== undefined) throw new Error("삭제된 작성본입니다. 다시 작성해 주세요.");
+      const historicalSources = old?.input.experience.sources ?? [];
+      if (resume?.contextId !== document.contextId || document.input.experience.id !== experience.id ||
+          document.input.experience.sources.some(source => !experience.sources.some(original => original.id === source.id) && !historicalSources.some(saved =>
+            saved.id === source.id && saved.kind === source.kind && saved.name === source.name && saved.text === source.text && saved.url === source.url && saved.createdAt === source.createdAt))) throw new Error("작성본의 원본 연결을 확인해 주세요.");
+      const noteSourceIds = new Set([...experience.sources.map(source => source.id), ...historicalSources.map(source => source.id), ...(old?.sourceNotes ?? []).map(note => note.sourceId)]);
+      if (document.sourceNotes.some(note => !noteSourceIds.has(note.sourceId))) throw new Error("작성본의 출처를 확인해 주세요.");
       const updatedAt = now();
       await tx.objectStore("experienceDocuments").put({ ...document, revision: (old?.revision ?? 0) + 1, createdAt: old?.createdAt ?? updatedAt, updatedAt });
     });

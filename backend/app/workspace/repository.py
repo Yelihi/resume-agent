@@ -190,18 +190,22 @@ class WorkspaceRepository:
             self._collect_materials(state)
         elif operation == "saveExperience":
             draft, identifier, base = args
-            require(draft["sources"] or (draft.get("markdown") or "").strip(), "메모, 링크 또는 파일을 추가해 주세요.", 422)
             require(all(source["text"].strip() or source.get("url") or source.get("original") for source in draft["sources"]), "빈 원본 자료입니다.", 422)
             if draft.get("markdown") is not None:
                 require(draft["markdown"].strip() and (draft.get("metadata") or "").strip(), "경험 본문과 메타데이터를 확인해 주세요.", 422)
             old = get(state, "experiences", identifier) if identifier else None
             require(not old or old["revision"] == base, "경험 기록이 변경됐습니다. 최신 기록을 다시 열어 주세요.")
-            require(len((old or {}).get("sources", [])) + len(draft["sources"]) <= 100, "한 경험에는 원본을 100개까지 보관할 수 있습니다.", 422)
+            removed = draft.pop("removedSourceIds", [])
+            old_sources = (old or {}).get("sources", [])
+            require(len(removed) == len(set(removed)) and set(removed) <= {source["id"] for source in old_sources}, "삭제할 원본 자료를 다시 확인해 주세요.")
+            sources = [source for source in old_sources if source["id"] not in removed] + draft["sources"]
+            require(sources or (draft.get("markdown", (old or {}).get("markdown")) or "").strip(), "메모, 링크 또는 파일을 추가해 주세요.", 422)
+            require(len(sources) <= 100, "한 경험에는 원본을 100개까지 보관할 수 있습니다.", 422)
             source_ids = [source["id"] for source in draft["sources"]]
             require(len(source_ids) == len(set(source_ids)) and not set(source_ids) & {source["id"] for source in (old or {}).get("sources", [])}, "이미 저장한 원본은 다시 추가할 수 없습니다.")
             identifier, updated = identifier or str(uuid4()), now()
             title = draft["title"].strip() or (old or {}).get("title") or (draft.get("markdown") or "").split("\n")[0].lstrip("# ")[:80] or (draft["sources"][0]["name"][:80] if draft["sources"] else "경험")
-            item = {**(old or {}), **draft, "id": identifier, "title": title, "sources": (old or {}).get("sources", []) + draft["sources"], "revision": (old or {}).get("revision", 0) + 1, "createdAt": (old or {}).get("createdAt", updated), "updatedAt": updated}
+            item = {**(old or {}), **draft, "id": identifier, "title": title, "sources": sources, "revision": (old or {}).get("revision", 0) + 1, "createdAt": (old or {}).get("createdAt", updated), "updatedAt": updated}
             if old:
                 old.update(item)
             else:
@@ -214,14 +218,16 @@ class WorkspaceRepository:
             get(state, "contexts", document["contextId"])
             experience = get(state, "experiences", document["experienceId"])
             resume = get(state, "resumeVersions", document["input"]["resume"]["id"])
+            old = find(state, "experienceDocuments", document["id"])
+            require((old and old["contextId"] == document["contextId"] and old["experienceId"] == document["experienceId"] and old["revision"] == base) or (not old and base is None), "다른 화면에서 작성본을 수정했습니다. 최신 작성본을 다시 열어 주세요.")
             source_ids = {source["id"] for source in experience["sources"]}
-            require(resume["contextId"] == document["contextId"] and document["input"]["experience"]["id"] == experience["id"] and all(source["id"] in source_ids for source in document["input"]["experience"]["sources"]), "작성본의 원본 연결을 확인해 주세요.")
+            historical_sources = old["input"]["experience"]["sources"] if old else []
+            require(resume["contextId"] == document["contextId"] and document["input"]["experience"]["id"] == experience["id"] and all(source["id"] in source_ids or source in historical_sources for source in document["input"]["experience"]["sources"]), "작성본의 원본 연결을 확인해 주세요.")
             for item in document["input"]["materials"]:
                 get(state, "materials", item["id"])
                 require(any(version["materialId"] == item["id"] and all(version[key] == item[key] for key in ("title", "content", "materialType")) for version in state["materialVersions"]), "작성본의 자료 연결을 확인해 주세요.")
-            require(all(note["sourceId"] in source_ids for note in document["sourceNotes"]), "작성본의 출처를 확인해 주세요.")
-            old = find(state, "experienceDocuments", document["id"])
-            require((old and old["contextId"] == document["contextId"] and old["experienceId"] == document["experienceId"] and old["revision"] == base) or (not old and base is None), "다른 화면에서 작성본을 수정했습니다. 최신 작성본을 다시 열어 주세요.")
+            note_source_ids = source_ids | {source["id"] for source in historical_sources} | {note["sourceId"] for note in (old or {}).get("sourceNotes", [])}
+            require(all(note["sourceId"] in note_source_ids for note in document["sourceNotes"]), "작성본의 출처를 확인해 주세요.")
             updated = now()
             item = {**document, "revision": (old or {}).get("revision", 0) + 1, "createdAt": (old or {}).get("createdAt", updated), "updatedAt": updated}
             if old:
