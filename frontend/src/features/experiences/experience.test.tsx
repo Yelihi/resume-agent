@@ -14,7 +14,7 @@ it("edits a generated portfolio draft, previews metadata and saves the experienc
   const store = new IndexedDbWorkspaceRepository(`experience-ui-${crypto.randomUUID()}`);
   const writeExperience = vi.fn().mockResolvedValue(result);
   const draftExperience = vi.fn().mockImplementation(async (input: AuthoringInput) => ({
-    ...result, sourceNotes: input.sources.map((source, index) => ({ sourceId: source.id, verified: index === 0, text: "English source analysis should stay hidden" })),
+    ...result, sourceNotes: input.sources.map((source, index) => ({ sourceId: source.id, verified: index === 0, failureReason: index === 0 ? null : "source_unverified", text: "English source analysis should stay hidden" })),
   }));
   const experienceMetadata = vi.fn().mockResolvedValue({ metadata: "문제: 중복 요청. 해결: 요청 통합. 역량: 안정성 개선." });
   const confirm = vi.fn().mockReturnValue(false);
@@ -32,14 +32,23 @@ it("edits a generated portfolio draft, previews metadata and saves the experienc
   await user.keyboard("{ArrowLeft}");
   expect(screen.getByRole("tab", { name: "Markdown" })).toHaveFocus();
   expect(screen.getByLabelText("경험 Markdown 편집")).toHaveValue("중복 요청을 제거했다.");
+  const template = screen.getByRole("switch", { name: "추천 템플릿 사용" });
+  expect(template).toBeChecked();
+  expect(screen.getByRole("list", { name: "경험 작성 흐름" })).toBeInTheDocument();
+  await user.click(template);
+  expect(template).not.toBeChecked();
+  expect(screen.queryByRole("list", { name: "경험 작성 흐름" })).not.toBeInTheDocument();
+  expect(screen.getByLabelText("경험 Markdown 편집")).toHaveValue("중복 요청을 제거했다.");
   await user.type(screen.getByLabelText("관련 링크"), "https://example.com/work\nhttps://example.com/unavailable");
   await user.click(screen.getByRole("button", { name: "자료로 초안 작성" }));
   await waitFor(() => expect(screen.getByLabelText("경험 Markdown 편집")).toHaveValue(result.markdown));
+  expect(draftExperience).toHaveBeenCalledWith(expect.objectContaining({ useTemplate: false }), expect.any(Function), expect.any(AbortSignal));
   const sources = screen.getByRole("list", { name: "참고한 자료" });
   expect(within(sources).getAllByRole("listitem")).toHaveLength(2);
   expect(within(sources).getByText("https://example.com/work")).toBeInTheDocument();
   expect(within(sources).getByText("내용 확인 완료")).toBeInTheDocument();
   expect(within(sources).getByText("내용 확인 필요")).toBeInTheDocument();
+  expect(within(sources).getByText("입력한 URL과 조회 출처가 일치하지 않아 사용하지 않았습니다.")).toBeInTheDocument();
   expect(screen.queryByText("English source analysis should stay hidden")).not.toBeInTheDocument();
   expect(screen.getByText(result.questions[0])).toBeInTheDocument();
   await user.type(screen.getByLabelText("경험 Markdown 편집"), "\n사용자가 보완한 근거");
@@ -149,6 +158,7 @@ it("shows live progress in only the generating area and restores inputs after fa
   await user.click(await screen.findByRole("button", { name: "경험 남기기" }));
   fireEvent.change(screen.getByLabelText("경험 Markdown 편집"), { target: { value: "작성 중인 본문" } });
   await user.click(screen.getByRole("button", { name: "자료로 초안 작성" }));
+  expect(screen.getByRole("switch", { name: "추천 템플릿 사용" })).toBeDisabled();
   const panel = screen.getByRole("tabpanel", { name: "Markdown" });
   expect(within(panel).getByRole("status")).toHaveTextContent("첨부 자료를 준비하고 있습니다.");
   expect(panel.querySelector('.experience-generation-skeleton[aria-hidden="true"]')).not.toBeNull();
@@ -170,4 +180,54 @@ it("shows live progress in only the generating area and restores inputs after fa
   await user.click(screen.getByRole("button", { name: "오류 팝업 닫기" }));
   expect(screen.getByLabelText("경험 Markdown 편집")).toHaveValue(result.markdown);
   expect(screen.getByRole("button", { name: "메타데이터 생성" })).toBeEnabled();
+});
+
+
+it("removes stored originals on final save, preserves the body and restores them on cancel", async () => {
+  const name = `experience-removal-ui-${crypto.randomUUID()}`;
+  const store = new IndexedDbWorkspaceRepository(name);
+  const sources = [
+    { id: "link", kind: "link" as const, name: "Gerrit 변경", text: "", url: "https://chromium-review.googlesource.com/c/chromium/src/+/8350946", createdAt: "2026-09-29" },
+    { id: "file", kind: "file" as const, name: "작업.txt", text: "확인된 작업 내용", original: new Blob(["확인된 작업 내용"]), createdAt: "2026-09-29" },
+  ];
+  await store.saveExperience({ title: "활동 기록", period: "", sources, markdown: "# 직접 쓴 활동 목록", metadata: "[사실] 활동 기록" });
+  const user = userEvent.setup();
+  const draftExperience = vi.fn().mockResolvedValue(result);
+  render(<App router={createTestRouter(["/experiences"])} store={store} confirm={() => true} services={{ getValidationPolicy: async () => policy, draftExperience }} />);
+  await user.click(await screen.findByRole("button", { name: "경험 수정" }));
+  await user.click(screen.getByText("보관한 원본 2개"));
+  await user.click(screen.getByRole("button", { name: "Gerrit 변경 원본 삭제" }));
+  expect(within(screen.getByRole("list", { name: "참고한 자료" })).getAllByRole("listitem")).toHaveLength(1);
+  expect(store.getSnapshot().experiences[0].sources).toHaveLength(2);
+  expect(screen.getByLabelText("경험 Markdown 편집")).toHaveValue("# 직접 쓴 활동 목록");
+  await user.click(screen.getByRole("button", { name: "목록으로" }));
+  await user.click(screen.getByRole("button", { name: "경험 수정" }));
+  expect(within(screen.getByRole("list", { name: "참고한 자료" })).getAllByRole("listitem")).toHaveLength(2);
+  await user.click(screen.getByRole("button", { name: "Gerrit 변경 참고자료 삭제" }));
+  vi.spyOn(store, "saveExperience").mockRejectedValueOnce(new Error("저장 실패"));
+  await user.click(screen.getByRole("button", { name: "최종 저장" }));
+  await screen.findByRole("dialog", { name: "요청 오류" });
+  await user.click(screen.getByRole("button", { name: "오류 팝업 닫기" }));
+  expect(store.getSnapshot().experiences[0].sources).toHaveLength(2);
+  expect(screen.queryByRole("button", { name: "Gerrit 변경 참고자료 삭제" })).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "최종 저장" }));
+  await screen.findByRole("button", { name: "경험 수정" });
+  expect((await new IndexedDbWorkspaceRepository(name).load()).experiences[0]).toMatchObject({ markdown: "# 직접 쓴 활동 목록", sources: [{ id: "file" }] });
+  await user.click(screen.getByRole("button", { name: "경험 수정" }));
+  await user.click(screen.getByRole("button", { name: "자료로 초안 작성" }));
+  await waitFor(() => expect(draftExperience).toHaveBeenCalled());
+  expect(draftExperience.mock.calls[0][0].sources.map((source: { id: string }) => source.id)).toEqual(["file"]);
+});
+
+it("explains supported attachments and Gerrit lookup limitations", async () => {
+  const user = userEvent.setup();
+  render(<App router={createTestRouter(["/experiences"])} store={new IndexedDbWorkspaceRepository(`experience-help-${crypto.randomUUID()}`)} services={{ getValidationPolicy: async () => policy }} />);
+  await user.click(await screen.findByRole("button", { name: "경험 남기기" }));
+  expect(screen.getByLabelText("관련 링크")).toHaveAccessibleDescription(expect.stringContaining("공개된 HTTP(S)"));
+  expect(screen.getByLabelText("경험 파일 첨부")).toHaveAccessibleDescription(expect.stringContaining("UTF-8"));
+  await user.click(screen.getByText("URL을 읽지 못하는 이유"));
+  expect(screen.getByText(/현재 Gerrit API로 직접 가져오는 기능은 없습니다/)).toBeVisible();
+  expect(screen.getByText(/추천 템플릿을 꺼도 링크 접근 방식은 같습니다/)).toBeVisible();
+  await user.click(screen.getByText("지원 파일 형식 보기"));
+  expect(screen.getByText(/ZIP·HWP·XLSX·PPTX와 이미지 파일 직접 첨부는 지원하지 않습니다/)).toBeVisible();
 });

@@ -13,7 +13,7 @@ export function ExperienceLibrary({ application }: { application: ApplicationCon
   const documents = workspace.experienceDocuments.filter(item => item.experienceId === selected?.id);
   if (workflow.editor) return <ExperienceEditor application={application} />;
   return <>
-    <header className="topbar"><div><h1>경험 기록</h1><p>문제와 해결 과정을 쌓고, 지원하는 회사에 맞춰 활용합니다.</p></div><button className="button-primary" disabled={task.busy} onClick={() => workflow.openEditor()}><Plus size={17} />경험 남기기</button></header>
+    <header className="topbar"><div><h1>경험 기록</h1><p>활동과 기여를 기록하고, 지원하는 회사에 맞춰 활용합니다.</p></div><button className="button-primary" disabled={task.busy} onClick={() => workflow.openEditor()}><Plus size={17} />경험 남기기</button></header>
     <div className="experience-layout"><aside className="experience-list" aria-label="경험 기록 목록">
       <label className="experience-search"><MagnifyingGlass size={18} aria-hidden="true" /><input type="search" aria-label="경험 검색" placeholder="경험 검색" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <p className="experience-list-count">기록 {experiences.length}개</p>

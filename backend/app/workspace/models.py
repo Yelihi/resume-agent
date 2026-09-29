@@ -61,7 +61,7 @@ class ExperienceSource(Contract):
         return self
 
 
-class ExperienceInput(Contract):
+class ExperienceContent(Contract):
     title: str = Field(max_length=500)
     period: str = Field(max_length=200)
     sources: list[ExperienceSource] = Field(max_length=100)
@@ -69,7 +69,11 @@ class ExperienceInput(Contract):
     metadata: str | None = Field(default=None, max_length=12_000)
 
 
-class ExperienceSnapshot(ExperienceInput):
+class ExperienceInput(ExperienceContent):
+    removedSourceIds: list[Identifier] = Field(default_factory=list, max_length=100)
+
+
+class ExperienceSnapshot(ExperienceContent):
     id: Identifier
     revision: int = Field(ge=1)
 
@@ -96,6 +100,7 @@ class SourceNote(Contract):
     sourceId: Identifier
     text: Text
     verified: bool
+    failureReason: Literal["content_unavailable", "source_unverified"] | None = None
 
 
 class ExperienceDocument(Contract):

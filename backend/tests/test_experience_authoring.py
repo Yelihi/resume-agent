@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import httpx
 
 from app.experience.api import (
-    DRAFT_RULES, METADATA_RULES, WRITING_RULES, LinkContent, LinkLookup,
+    DRAFT_RULES, FREE_DRAFT_RULES, METADATA_RULES, WRITING_RULES, LinkContent, LinkLookup,
     MetadataResult, WrittenContent, get_gateway,
 )
 from app.main import app
@@ -32,7 +32,7 @@ def test_draft_verifies_sources_and_metadata_uses_edited_markdown():
             assert kwargs["input"][0]["content"] == DRAFT_RULES
             assert "직접 작성한 역할" in body["input"]["markdown"]
             assert "resume" not in body["input"]
-            assert body["sourceNotes"] == [{"sourceId": "link", "text": "검색 조건 URL 저장", "verified": True}]
+            assert body["sourceNotes"] == [{"sourceId": "link", "text": "검색 조건 URL 저장", "verified": True, "failureReason": None}]
             return SimpleNamespace(output_parsed=WrittenContent(markdown="# 초안", summary="검색 개선", questions=["성과는?"]))
 
     async def scenario():
@@ -172,4 +172,48 @@ def test_authoring_stream_emits_before_completion_and_cancels_disconnected_work(
         await stream.aclose()
         assert cancelled.is_set()
 
+    asyncio.run(scenario())
+
+
+def test_optional_template_preserves_source_guards_and_reports_lookup_failures():
+    class Responses:
+        rules = []
+
+        async def parse(self, **kwargs):
+            if kwargs["text_format"] is LinkLookup:
+                return SimpleNamespace(output=[{"url": "https://unrelated.example"}], output_parsed=LinkLookup(sources=[
+                    LinkContent(sourceId="unreadable", text=""),
+                    LinkContent(sourceId="unverified", text="UNVERIFIED_CLAIM"),
+                ]))
+            self.rules.append(kwargs["input"][0]["content"])
+            assert kwargs["tools"] == [] and kwargs["tool_choice"] == "none"
+            body = json.loads(kwargs["input"][1]["content"])
+            assert body["input"]["markdown"] == "- 첫 번째 기여\n- 두 번째 기여"
+            assert [note["failureReason"] for note in body["sourceNotes"]] == ["content_unavailable", "source_unverified"]
+            assert all(not note["verified"] for note in body["sourceNotes"])
+            assert "UNVERIFIED_CLAIM" not in kwargs["input"][1]["content"]
+            return SimpleNamespace(output_parsed=WrittenContent(markdown="# 활동 목록", summary="활동", questions=[]))
+
+    async def scenario():
+        responses = Responses()
+        app.dependency_overrides[get_gateway] = lambda: SimpleNamespace(client=SimpleNamespace(responses=responses), model="test")
+        try:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                data = {"title": "기여 목록", "period": "", "markdown": "- 첫 번째 기여\n- 두 번째 기여", "sources": [
+                    {"id": identifier, "kind": "link", "name": "작업", "text": "", "url": f"https://example.com/{identifier}", "createdAt": "2026-09-29"}
+                    for identifier in ("unreadable", "unverified")
+                ]}
+                # Omitted flag keeps existing clients' recommended template.
+                default = await client.post("/api/experiences/draft", json=data)
+                assert default.status_code == 200
+                for enabled in (False, True):
+                    result = await client.post("/api/experiences/draft", json={**data, "useTemplate": enabled}, headers={"accept": "text/event-stream"})
+                    events = [json.loads(line[6:]) for line in result.text.splitlines() if line.startswith("data: ")]
+                    assert events[-1]["type"] == "completed"
+                    assert events[-1]["result"]["sourceNotes"][0]["failureReason"] == "content_unavailable"
+                assert responses.rules == [DRAFT_RULES, FREE_DRAFT_RULES, DRAFT_RULES]
+                assert "고정 섹션을 강제하지 않는다" in FREE_DRAFT_RULES
+                assert "verified=true인 sourceNotes만" in FREE_DRAFT_RULES
+        finally:
+            app.dependency_overrides.clear()
     asyncio.run(scenario())
