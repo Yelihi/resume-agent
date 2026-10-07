@@ -3,6 +3,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, TypeAdapter, model_validator
 
 from app.document_processing.models import FlowDocument, PageDocument
+from app.experience.models import InterviewQuestion
 
 Identifier = Annotated[str, Field(min_length=1, max_length=120)]
 Text = Annotated[str, Field(max_length=100_000)]
@@ -67,6 +68,8 @@ class ExperienceContent(Contract):
     sources: list[ExperienceSource] = Field(max_length=100)
     markdown: str | None = Field(default=None, max_length=60_000)
     metadata: str | None = Field(default=None, max_length=12_000)
+    talkingPoints: str = Field(default="", max_length=8000)
+    interviewQuestions: list[InterviewQuestion] = Field(default_factory=list, max_length=20)
 
 
 class ExperienceInput(ExperienceContent):

@@ -24,6 +24,32 @@ def repository(tmp_path):
     return WorkspaceRepository(database)
 
 
+def test_experience_preparation_survives_reload_edit_and_import_without_entering_review_facts(tmp_path):
+    repo = repository(tmp_path)
+    draft = dict(title="Chromium 작업", period="", sources=[], markdown="테스트 추가", metadata="회귀 검증",
+                 talkingPoints="변경의 검증 과정을 어필", interviewQuestions=[dict(question="어떻게 검증했나요?", answer="직접 작성한 답변", evidence="테스트 추가")])
+    identifier = repo.command("alice", "saveExperience", [draft])["result"]
+    repo = WorkspaceRepository(repo.database)
+    assert repo.load("alice")["workspace"]["experiences"][0]["interviewQuestions"] == draft["interviewQuestions"]
+    # Older clients that omit the fields must preserve the preparation.
+    repo.command("alice", "saveExperience", [dict(title="수정 제목", period="", sources=[]), identifier, 1])
+    before = repo.load("alice")
+    for invalid in (dict(talkingPoints="x" * 8001), dict(interviewQuestions=[draft["interviewQuestions"][0]] * 21),
+                    dict(interviewQuestions=[dict(question=" ", answer="", evidence="")]),
+                    dict(interviewQuestions=[dict(question="질문", answer="x" * 4001, evidence="")])):
+        with pytest.raises(ValidationError):
+            repo.command("alice", "saveExperience", [{**draft, **invalid}, identifier, 2])
+        assert repo.load("alice") == before
+    imported = import_workspace(repo, "bob", ImportRequest(importId="preparation", workspace=before["workspace"]))
+    assert imported["workspace"]["experiences"][0]["interviewQuestions"] == draft["interviewQuestions"]
+    context = repo.command("alice", "createContext", ["지원", resume()])["result"]
+    repo.command("alice", "saveMaterial", [dict(title="공고", materialType="jobPosting", content="회귀 검증", source="note"), None, context])
+    candidate = repo.prepare_review("alice", context)["reviewContext"]["experiences"][0]
+    assert "interviewQuestions" not in candidate and "talkingPoints" not in candidate
+    repo.command("alice", "saveExperience", [{**draft, "interviewQuestions": [], "talkingPoints": ""}, identifier, 2])
+    assert repo.load("alice")["workspace"]["experiences"][0]["interviewQuestions"] == []
+
+
 def test_owner_isolation_retention_and_atomic_conflicts(tmp_path):
     repo = repository(tmp_path)
     command = lambda operation, *args: repo.command("alice", operation, list(args))

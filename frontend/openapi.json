@@ -1729,6 +1729,20 @@
             ],
             "title": "Metadata"
           },
+          "talkingPoints": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Talkingpoints",
+            "default": ""
+          },
+          "interviewQuestions": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewQuestion"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Interviewquestions"
+          },
           "id": {
             "type": "string",
             "maxLength": 120,
@@ -1962,6 +1976,20 @@
               }
             ],
             "title": "Metadata"
+          },
+          "talkingPoints": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Talkingpoints",
+            "default": ""
+          },
+          "interviewQuestions": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewQuestion"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Interviewquestions"
           },
           "id": {
             "type": "string",
@@ -2555,6 +2583,34 @@
         ],
         "title": "ImportedWorkspace"
       },
+      "InterviewQuestion": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "answer": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Answer"
+          },
+          "evidence": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question",
+          "answer",
+          "evidence"
+        ],
+        "title": "InterviewQuestion"
+      },
       "KeyInput": {
         "properties": {
           "apiKey": {
@@ -2968,6 +3024,20 @@
             "maxLength": 12000,
             "minLength": 1,
             "title": "Metadata"
+          },
+          "talkingPoints": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Talkingpoints",
+            "default": ""
+          },
+          "interviewQuestions": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewQuestion"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Interviewquestions"
           }
         },
         "additionalProperties": false,

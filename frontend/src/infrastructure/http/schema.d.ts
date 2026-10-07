@@ -697,6 +697,13 @@ export interface components {
             markdown?: string | null;
             /** Metadata */
             metadata?: string | null;
+            /**
+             * Talkingpoints
+             * @default
+             */
+            talkingPoints: string;
+            /** Interviewquestions */
+            interviewQuestions?: components["schemas"]["InterviewQuestion"][];
             /** Id */
             id: string;
             /** Revision */
@@ -774,6 +781,13 @@ export interface components {
             markdown?: string | null;
             /** Metadata */
             metadata?: string | null;
+            /**
+             * Talkingpoints
+             * @default
+             */
+            talkingPoints: string;
+            /** Interviewquestions */
+            interviewQuestions?: components["schemas"]["InterviewQuestion"][];
             /** Id */
             id: string;
             /** Revision */
@@ -947,6 +961,15 @@ export interface components {
             /** Experiencedocuments */
             experienceDocuments: components["schemas"]["SavedExperienceDocument"][];
         };
+        /** InterviewQuestion */
+        InterviewQuestion: {
+            /** Question */
+            question: string;
+            /** Answer */
+            answer: string;
+            /** Evidence */
+            evidence: string;
+        };
         /** KeyInput */
         KeyInput: {
             /**
@@ -1084,6 +1107,13 @@ export interface components {
         MetadataResult: {
             /** Metadata */
             metadata: string;
+            /**
+             * Talkingpoints
+             * @default
+             */
+            talkingPoints: string;
+            /** Interviewquestions */
+            interviewQuestions?: components["schemas"]["InterviewQuestion"][];
         };
         /** ModuleErrorDTO */
         ModuleErrorDTO: {
