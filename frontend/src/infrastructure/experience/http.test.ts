@@ -38,3 +38,15 @@ it("rejects interrupted, failed and malformed streams instead of accepting a par
     await expect(experienceMetadata(input)).rejects.toBeInstanceOf(Error);
   }
 });
+
+it("validates preparation fields while accepting responses from older servers", async () => {
+  const result = { metadata: "역량 근거", talkingPoints: "검증을 어필", interviewQuestions: [{ question: "검증은?", answer: "테스트 추가", evidence: "테스트 추가" }] };
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(`data: ${JSON.stringify({ type: "completed", result })}\n\n`)));
+  await expect(experienceMetadata(input)).resolves.toEqual(result);
+  for (const invalid of [{ talkingPoints: null }, { talkingPoints: "x".repeat(8001) }, { interviewQuestions: [null] },
+    { interviewQuestions: [{ question: " ", answer: "", evidence: "" }] }, { interviewQuestions: Array(21).fill(result.interviewQuestions[0]) },
+    { interviewQuestions: [{ question: "질문", answer: 123, evidence: "" }] }]) {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(`data: ${JSON.stringify({ type: "completed", result: { ...result, ...invalid } })}\n\n`)));
+    await expect(experienceMetadata(input)).rejects.toThrow("생성 결과");
+  }
+});

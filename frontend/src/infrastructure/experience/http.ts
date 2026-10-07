@@ -1,4 +1,4 @@
-import type { ExperienceGateway, WritingResult } from "../../domain/experience/entities";
+import type { ExperienceGateway, MetadataResult, WritingResult } from "../../domain/experience/entities";
 import { apiFetch, apiResponse } from "../http/client";
 
 export const writeExperience: ExperienceGateway["writeExperience"] = input => apiFetch<WritingResult>("/api/experiences/write", {
@@ -57,6 +57,10 @@ function isWritingResult(value: unknown): value is WritingResult {
 export const draftExperience: ExperienceGateway["draftExperience"] = (input, onProgress, signal) =>
   generate("/api/experiences/draft", input, isWritingResult, onProgress, signal);
 export const experienceMetadata: ExperienceGateway["experienceMetadata"] = (input, onProgress, signal) =>
-  generate("/api/experiences/metadata", input, (value): value is { metadata: string } =>
+  generate("/api/experiences/metadata", input, (value): value is MetadataResult =>
     !!value && typeof value === "object" && "metadata" in value && typeof value.metadata === "string"
-    && !!value.metadata.trim() && value.metadata.length <= 12_000, onProgress, signal);
+    && !!value.metadata.trim() && value.metadata.length <= 12_000
+    && (!("talkingPoints" in value) || (typeof value.talkingPoints === "string" && value.talkingPoints.length <= 8000))
+    && (!("interviewQuestions" in value) || (Array.isArray(value.interviewQuestions) && value.interviewQuestions.length <= 20
+      && value.interviewQuestions.every(item => item && typeof item.question === "string" && !!item.question.trim() && item.question.length <= 500
+        && typeof item.answer === "string" && item.answer.length <= 4000 && typeof item.evidence === "string" && item.evidence.length <= 2000))), onProgress, signal);

@@ -10,6 +10,53 @@ import { MarkdownDocument, summaryMarkdown } from "./MarkdownDocument";
 const policy = { maximumFileSizeBytes: { pdf: 1000, image: 1000, docx: 1000, txt: 1000 }, maximumDirectTextCharacters: 100_000 };
 const result: WritingResult = { markdown: "# 로그인 요청 개선\n\n기간 확인 필요\n\n## 이력서용 요약\n\n- 중복 요청을 제거했다.\n\n## 상세 설명\n\n중복 요청이 발생하는 조건을 확인했다.\n\n## 근거\n\n작업 메모", summary: "- 중복 요청을 제거했다.", questions: ["어떤 조건에서 중복 요청이 발생했나요?"], sourceNotes: [] };
 
+it("keeps editable preparation with the experience through regeneration, save failure and reopening", async () => {
+  const name = `preparation-ui-${crypto.randomUUID()}`;
+  const store = new IndexedDbWorkspaceRepository(name);
+  const experienceMetadata = vi.fn().mockResolvedValue({ metadata: "회귀 검증 근거", talkingPoints: "- 회귀 테스트로 변경을 검증한 점을 어필하세요.",
+    interviewQuestions: [{ question: "어떻게 검증했나요?", answer: "회귀 테스트를 추가했다.", evidence: "회귀 테스트를 추가했다." }] });
+  const user = userEvent.setup();
+  const mounted = render(<App router={createTestRouter(["/experiences"])} store={store} services={{ getValidationPolicy: async () => policy, experienceMetadata }} />);
+  await user.click(await screen.findByRole("button", { name: "경험 남기기" }));
+  fireEvent.change(screen.getByLabelText("제목"), { target: { value: "Chromium 검증" } });
+  fireEvent.change(screen.getByLabelText("경험 Markdown 편집"), { target: { value: "회귀 테스트를 추가했다." } });
+  await user.click(screen.getByRole("button", { name: "메타데이터 생성" }));
+  await screen.findByLabelText("예상 질문 1");
+  expect(screen.getByRole("textbox", { name: "어필 포인트" })).toHaveValue("- 회귀 테스트로 변경을 검증한 점을 어필하세요.");
+  fireEvent.change(screen.getByLabelText("답변 메모 1"), { target: { value: "수정 전 실패, 수정 후 통과를 직접 확인했다." } });
+  fireEvent.change(screen.getByRole("textbox", { name: "어필 포인트" }), { target: { value: "검증 절차와 개인 기여를 어필" } });
+  await user.click(screen.getByRole("button", { name: "질문 추가" }));
+  fireEvent.change(screen.getByLabelText("예상 질문 2"), { target: { value: "다른 대안은?" } });
+  await user.click(screen.getByRole("button", { name: "질문 추가" }));
+  await user.click(screen.getByRole("button", { name: "질문 3 삭제" }));
+  fireEvent.change(screen.getByLabelText("경험 Markdown 편집"), { target: { value: "회귀 테스트를 추가했다. 검증 절차를 보완했다." } });
+  await user.click(screen.getByRole("button", { name: "메타데이터 생성" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "최종 저장" })).toBeEnabled());
+  expect(screen.getByLabelText("답변 메모 1")).toHaveValue("수정 전 실패, 수정 후 통과를 직접 확인했다.");
+  expect(screen.getByLabelText("예상 질문 2")).toHaveValue("다른 대안은?");
+  expect(screen.getByRole("textbox", { name: "어필 포인트" })).toHaveValue("검증 절차와 개인 기여를 어필");
+  vi.spyOn(store, "saveExperience").mockRejectedValueOnce(new Error("저장 실패"));
+  await user.click(screen.getByRole("button", { name: "최종 저장" }));
+  await screen.findByRole("dialog", { name: "요청 오류" });
+  await user.click(screen.getByRole("button", { name: "오류 팝업 닫기" }));
+  expect(screen.getByLabelText("답변 메모 1")).toHaveValue("수정 전 실패, 수정 후 통과를 직접 확인했다.");
+  await user.click(screen.getByRole("button", { name: "최종 저장" }));
+  await screen.findByRole("button", { name: "경험 수정" });
+  mounted.unmount();
+  const reloaded = new IndexedDbWorkspaceRepository(name);
+  render(<App router={createTestRouter(["/experiences"])} store={reloaded} services={{ getValidationPolicy: async () => policy }} />);
+  await screen.findByRole("button", { name: "경험 수정" });
+  await user.click(screen.getByText("어떻게 검증했나요?"));
+  expect(screen.getByText("수정 전 실패, 수정 후 통과를 직접 확인했다.")).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "경험 수정" }));
+  expect(screen.getByLabelText("답변 메모 1")).toHaveValue("수정 전 실패, 수정 후 통과를 직접 확인했다.");
+  expect(screen.getByLabelText("답변 메모 2")).toHaveValue("");
+  await user.click(screen.getByRole("button", { name: "질문 2 삭제" }));
+  await user.click(screen.getByRole("button", { name: "최종 저장" }));
+  await screen.findByRole("button", { name: "경험 수정" });
+  expect(reloaded.getSnapshot().experiences[0].interviewQuestions).toHaveLength(1);
+});
+
 it("edits a generated portfolio draft, previews metadata and saves the experience", async () => {
   const store = new IndexedDbWorkspaceRepository(`experience-ui-${crypto.randomUUID()}`);
   const writeExperience = vi.fn().mockResolvedValue(result);
@@ -56,6 +103,7 @@ it("edits a generated portfolio draft, previews metadata and saves the experienc
   await user.click(screen.getByRole("button", { name: "메타데이터 생성" }));
   await screen.findByLabelText("추천용 메타데이터");
   expect(experienceMetadata).toHaveBeenCalledWith(expect.objectContaining({ markdown: expect.stringContaining("사용자가 보완한 근거") }), expect.any(Function), expect.any(AbortSignal));
+  await user.click(screen.getByText("추천용 메타데이터 확인·수정"));
   fireEvent.change(screen.getByLabelText("추천용 메타데이터"), { target: { value: "" } });
   expect(screen.getByLabelText("추천용 메타데이터")).toHaveValue("");
   expect(screen.getByRole("button", { name: "최종 저장" })).toBeDisabled();

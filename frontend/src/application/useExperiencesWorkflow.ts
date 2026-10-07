@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Experience, ExperienceDocument, ExperienceSource, WritingInput } from "../domain/experience/entities";
+import type { Experience, ExperienceDocument, ExperienceSource, InterviewQuestion, WritingInput } from "../domain/experience/entities";
 import type { Review } from "../domain/review/entities";
 import type { Workspace } from "../domain/workspace/entities";
 import type { WorkspaceRepository } from "../domain/workspace/ports";
@@ -12,6 +12,7 @@ export type ExperienceEditor = {
   experienceId?: string; baseRevision?: number; title: string; period: string;
   markdown: string; links: string; files: File[]; sources: ExperienceSource[];
   metadata: string; metadataFor: string; questions: string[];
+  talkingPoints: string; interviewQuestions: InterviewQuestion[];
   sourceNotes: ExperienceDocument["sourceNotes"]; preview: boolean; useTemplate: boolean;
 };
 export type WritingDraft = Omit<ExperienceDocument, "createdAt" | "updatedAt" | "revision"> & { baseRevision?: number };
@@ -31,6 +32,7 @@ export function useExperiencesWorkflow({ store, workspace, services, runTask, co
     const markdown = experience?.markdown ?? experience?.sources.filter(source => source.kind === "note").map(source => source.text).join("\n\n") ?? "";
     setEditor({ experienceId: experience?.id, baseRevision: experience?.revision, title: experience?.title ?? "", period: experience?.period ?? "",
       markdown, links: "", files: [], sources: experience?.sources ?? [], metadata: experience?.metadata ?? "",
+      talkingPoints: experience?.talkingPoints ?? "", interviewQuestions: experience?.interviewQuestions ?? [],
       metadataFor: experience?.metadata ? markdown : "", questions: [], sourceNotes: [], preview: false, useTemplate: true });
   };
   const cancelEditor = () => { if (confirm("저장하지 않은 경험 기록을 버릴까요?")) setEditor(null); };
@@ -100,7 +102,10 @@ export function useExperiencesWorkflow({ store, workspace, services, runTask, co
       const sources = await collectSources(editor, progress);
       if (!ownsEditor(editor)) return;
       const result = await services.experienceMetadata({ title: editor.title, period: editor.period, markdown: editor.markdown }, progress, controller.signal);
-      if (ownsEditor(editor)) setEditor({ ...editor, sources, files: [], links: "", metadata: result.metadata, metadataFor: editor.markdown });
+      if (ownsEditor(editor)) setEditor({ ...editor, sources, files: [], links: "", metadata: result.metadata, metadataFor: editor.markdown,
+        talkingPoints: editor.talkingPoints.trim() ? editor.talkingPoints : result.talkingPoints ?? "",
+        interviewQuestions: editor.interviewQuestions.length ? editor.interviewQuestions : result.interviewQuestions ?? [],
+      });
     } finally {
       generationAbort.current = null;
       setGeneration(null);
@@ -109,11 +114,13 @@ export function useExperiencesWorkflow({ store, workspace, services, runTask, co
   const saveExperience = () => runTask(async () => {
     if (!editor) return;
     if (!editor.markdown.trim() || !editor.metadata.trim() || editor.metadataFor !== editor.markdown) throw new Error("최신 본문의 메타데이터를 생성해 주세요.");
+    if (editor.interviewQuestions.some(item => !item.question.trim())) throw new Error("예상 질문을 입력하거나 빈 항목을 삭제해 주세요.");
     const existing = workspace.experiences.find(item => item.id === editor.experienceId);
     const sources = editor.sources.filter(source => !existing?.sources.some(saved => saved.id === source.id));
     const removedSourceIds = existing?.sources.filter(saved => !editor.sources.some(source => source.id === saved.id)).map(source => source.id) ?? [];
     const id = await store.saveExperience({ title: editor.title, period: editor.period, sources, removedSourceIds,
-      markdown: editor.markdown, metadata: editor.metadata }, editor.experienceId, editor.baseRevision);
+      markdown: editor.markdown, metadata: editor.metadata, talkingPoints: editor.talkingPoints,
+      interviewQuestions: editor.interviewQuestions }, editor.experienceId, editor.baseRevision);
     if (ownsEditor(editor)) { setSelectedExperienceId(id); setEditor(null); }
   }, "경험 기록을 저장하지 못했습니다. 입력은 유지됩니다.");
   const selectDocument = (id: string) => {

@@ -3,6 +3,7 @@ import type { ApplicationController } from "../../application/useApplication";
 import { SegmentedTabs } from "../../components/SegmentedTabs";
 import { ExperienceSources } from "./ExperienceSources";
 import { MarkdownDocument } from "./MarkdownDocument";
+import { InterviewPreparation } from "./InterviewPreparation";
 import "./experience-authoring.css";
 
 function GenerationLoading({ message, kind }: { message: string; kind: "draft" | "metadata" }) {
@@ -24,6 +25,21 @@ export function ExperienceEditor({ application }: { application: ApplicationCont
       <section className="experience-authoring-document" aria-label="경험 작성">
         <div className="experience-fields"><label>제목<input value={editor.title} disabled={task.busy} maxLength={500} placeholder="예: 결제 중복 요청 개선" onChange={event => workflow.updateEditor({ title: event.target.value })} /></label>
           <label>경험 기간 <span className="optional-label">선택</span><input value={editor.period} disabled={task.busy} maxLength={200} placeholder="예: 2026.08–진행 중" onChange={event => workflow.updateEditor({ period: event.target.value })} /></label></div>
+        <section className="experience-authoring-metadata experience-talking-points" aria-labelledby="experience-points-heading">
+          <div className="experience-metadata-heading"><div><span className="experience-kicker">이 경험에서 꺼낼 이야기</span><h2 id="experience-points-heading">어필 포인트</h2></div>
+            <button type="button" disabled={task.busy || !editor.markdown.trim()} onClick={() => void workflow.generateMetadata()}><Sparkle size={16} aria-hidden="true" />메타데이터 생성</button></div>
+          <p className="experience-hint">본문을 확인한 뒤 분석하세요. 어필할 기여와 판단, 예상 질문·답변 근거를 제안합니다.</p>
+          {generation?.kind === "metadata" ? <GenerationLoading {...generation} /> : <>
+            <label><span className="visually-hidden">어필 포인트</span><textarea value={editor.talkingPoints} disabled={task.busy} maxLength={8000} rows={3}
+              placeholder="강조할 기여 → 그 이유와 근거 → 추가로 확인할 점" onChange={event => workflow.updateEditor({ talkingPoints: event.target.value })} /></label>
+            {(editor.metadata || editor.metadataFor) && <details className="experience-analysis-metadata"><summary>추천용 메타데이터 확인·수정</summary>
+              <label><span className="visually-hidden">추천용 메타데이터</span><textarea value={editor.metadata} disabled={task.busy} maxLength={12_000} rows={6} onChange={event => workflow.updateEditor({ metadata: event.target.value })} /></label>
+              <p className="experience-hint">경험 추천에 사용하는 분석입니다. 사실과 다른 부분은 직접 고쳐 주세요.</p>
+            </details>}
+          </>}
+          <p className="experience-hint">기존 포인트와 질문·답변은 유지하며, 비어 있는 영역만 채웁니다. 추천은 실제 기여와 일치하는지 확인하세요.</p>
+          {!metadataReady && (editor.metadata || editor.metadataFor) && <p role="status" className="experience-hint">경험이 변경되었습니다. 메타데이터를 다시 생성하고 기존 답변과 근거도 확인해 주세요.</p>}
+        </section>
         <div className="experience-template-option">
           <label className="experience-template-toggle"><input type="checkbox" role="switch" checked={editor.useTemplate} disabled={task.busy} aria-describedby="experience-template-help" onChange={event => workflow.updateEditor({ useTemplate: event.target.checked })} />추천 템플릿 사용</label>
           <p id="experience-template-help" className="experience-hint">{editor.useTemplate ? "문제 → 분석 → 해결 → 기대 결과를 중심으로 초안을 작성합니다." : "확인한 자료를 바탕으로 활동 목록·시간순 기록 등 알맞은 형식으로 초안을 작성합니다."} 설정은 다음 초안 작성에 적용되며 현재 본문은 유지됩니다.</p>
@@ -37,7 +53,8 @@ export function ExperienceEditor({ application }: { application: ApplicationCont
         </div>
         <p className="experience-hint">이미지는 ![설명](https://…) 형식의 외부 URL로 넣을 수 있습니다.</p>
         {!!editor.questions.length && <section className="experience-authoring-questions"><h2>보완하면 좋은 내용</h2><ul>{editor.questions.map((question, index) => <li key={index}>{question}</li>)}</ul></section>}
-        <section className="experience-authoring-metadata"><div className="experience-metadata-heading"><div><h2>추천용 메타데이터</h2><p className="experience-hint">본문의 활동·기여·역량을 근거와 함께 정리합니다. 본문 형식은 바꾸지 않습니다.</p></div><button type="button" disabled={task.busy || !editor.markdown.trim()} onClick={() => void workflow.generateMetadata()}><Sparkle size={16} aria-hidden="true" />메타데이터 생성</button></div>{generation?.kind === "metadata" ? <GenerationLoading {...generation} /> : editor.metadata || editor.metadataFor ? <><label><span className="visually-hidden">추천용 메타데이터</span><textarea value={editor.metadata} disabled={task.busy} maxLength={12_000} rows={8} onChange={event => workflow.updateEditor({ metadata: event.target.value })} /></label><p className="experience-hint">사실과 다른 부분은 직접 고쳐 주세요.</p>{!metadataReady && <p role="status" className="experience-hint">경험이 변경되었습니다. 메타데이터를 다시 생성해 주세요.</p>}</> : <p className="experience-hint">본문을 작성한 뒤 생성해 주세요. 저장한 메타데이터는 AI가 경험을 추천할 때 사용합니다.</p>}</section>
+        <InterviewPreparation questions={editor.interviewQuestions} disabled={task.busy} onChange={interviewQuestions => workflow.updateEditor({ interviewQuestions })} />
+
       </section>
       <aside className="experience-authoring-materials" aria-label="참고 자료"><h2>참고 자료</h2><p>링크와 문서에서 경험 초안을 만들 수 있습니다. 생성된 본문은 자유롭게 수정하세요.</p>
         <label>관련 링크<textarea aria-describedby="experience-link-help" className="experience-links" value={editor.links} disabled={task.busy} onChange={event => workflow.updateEditor({ links: event.target.value })} placeholder="GitHub, 작업 문서 등의 링크를 한 줄에 하나씩" rows={4} /></label>

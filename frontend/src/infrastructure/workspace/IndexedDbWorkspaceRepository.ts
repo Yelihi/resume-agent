@@ -145,6 +145,7 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
       const experienceId = id ?? uuid(), updatedAt = now();
       await tx.objectStore("experiences").put({ id: experienceId, title: input.title.trim() || old?.title || input.markdown?.split("\n")[0].replace(/^#+\s*/, "").slice(0, 80) || input.sources[0]?.name.slice(0, 80) || "경험",
         period: input.period, markdown: input.markdown ?? old?.markdown, metadata: input.metadata ?? old?.metadata, sources, revision: (old?.revision ?? 0) + 1,
+        talkingPoints: input.talkingPoints ?? old?.talkingPoints ?? "", interviewQuestions: input.interviewQuestions ?? old?.interviewQuestions ?? [],
         createdAt: old?.createdAt ?? updatedAt, updatedAt });
       return experienceId;
     });

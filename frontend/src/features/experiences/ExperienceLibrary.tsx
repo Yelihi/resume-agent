@@ -4,11 +4,12 @@ import type { ApplicationController } from "../../application/useApplication";
 import { ExperienceSources } from "./ExperienceSources";
 import { ExperienceEditor } from "./ExperienceEditor";
 import { MarkdownDocument } from "./MarkdownDocument";
+import { InterviewPreparation } from "./InterviewPreparation";
 
 export function ExperienceLibrary({ application }: { application: ApplicationController }) {
   const { workspace, experiencesWorkflow: workflow, task } = application;
   const [query, setQuery] = useState("");
-  const experiences = workspace.experiences.filter(item => `${item.title} ${item.period} ${item.markdown ?? ""} ${item.metadata ?? ""} ${item.sources.map(source => source.text + source.name).join(" ")}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+  const experiences = workspace.experiences.filter(item => `${item.title} ${item.period} ${item.markdown ?? ""} ${item.metadata ?? ""} ${item.talkingPoints ?? ""} ${(item.interviewQuestions ?? []).map(question => `${question.question} ${question.answer} ${question.evidence}`).join(" ")} ${item.sources.map(source => source.text + source.name).join(" ")}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   const selected = experiences.find(item => item.id === workflow.selectedExperienceId) ?? experiences[0];
   const documents = workspace.experienceDocuments.filter(item => item.experienceId === selected?.id);
   if (workflow.editor) return <ExperienceEditor application={application} />;
@@ -23,7 +24,9 @@ export function ExperienceLibrary({ application }: { application: ApplicationCon
       {!experiences.length && <p className="experience-list-empty">{query ? "검색한 경험이 없습니다." : "남긴 경험이 여기에 모입니다."}</p>}
     </aside><section className="experience-detail" aria-label="경험 원본">
       {selected ? <><header className="experience-detail-heading"><div><span className="experience-kicker">경험 원본</span><h2>{selected.title}</h2><p>{selected.period || "경험 기간 미입력"}</p></div><button disabled={task.busy} onClick={() => workflow.openEditor(selected)}><PencilSimple size={16} />경험 수정</button></header>
+        {selected.talkingPoints && <section className="experience-talking-points"><span className="experience-kicker">이 경험에서 꺼낼 이야기</span><h2>어필 포인트</h2><MarkdownDocument markdown={selected.talkingPoints} /></section>}
         {selected.markdown && <MarkdownDocument markdown={selected.markdown} />}
+        {!!selected.interviewQuestions?.length && <InterviewPreparation questions={selected.interviewQuestions} />}
         {selected.metadata && <details className="experience-saved-metadata"><summary>추천용 메타데이터</summary><p>{selected.metadata}</p></details>}
         <ExperienceSources sources={selected.sources} />
         {!!documents.length && <section className="experience-uses"><h3>이 경험을 사용한 작업 공간</h3>{documents.map(doc => <button key={doc.id} className="text-button" disabled={task.busy} onClick={() => application.navigation.navigate(`/contexts/${doc.contextId}/experiences`)}>{workspace.contexts.find(context => context.id === doc.contextId)?.name}</button>)}</section>}

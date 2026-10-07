@@ -1,15 +1,19 @@
 import type { OriginalFile } from "../shared/files";
 
+export type InterviewQuestion = { question: string; answer: string; evidence: string };
+export type ExperiencePreparation = { talkingPoints?: string; interviewQuestions?: InterviewQuestion[] };
+export type MetadataResult = ExperiencePreparation & { metadata: string };
+
 export type ExperienceSource = {
   id: string; kind: "note" | "link" | "file"; name: string; text: string;
   url?: string; original?: OriginalFile; createdAt: string;
 };
-export type Experience = {
+export type Experience = ExperiencePreparation & {
   id: string; title: string; period: string; sources: ExperienceSource[];
   markdown?: string; metadata?: string;
   revision: number; createdAt: string; updatedAt: string;
 };
-export type ExperienceInput = { title: string; period: string; sources: ExperienceSource[]; removedSourceIds?: string[]; markdown?: string; metadata?: string };
+export type ExperienceInput = ExperiencePreparation & { title: string; period: string; sources: ExperienceSource[]; removedSourceIds?: string[]; markdown?: string; metadata?: string };
 export type AuthoringInput = { title: string; period: string; markdown: string; sources: Omit<ExperienceSource, "original">[]; useTemplate?: boolean };
 export type WritingInput = {
   experience: { id: string; title: string; period: string; revision: number; sources: Omit<ExperienceSource, "original">[]; markdown?: string; metadata?: string };
@@ -24,5 +28,5 @@ export type ExperienceDocument = WritingResult & {
 export interface ExperienceGateway {
   writeExperience(input: WritingInput): Promise<WritingResult>;
   draftExperience(input: AuthoringInput, onProgress?: (message: string) => void, signal?: AbortSignal): Promise<WritingResult>;
-  experienceMetadata(input: Pick<AuthoringInput, "title" | "period" | "markdown">, onProgress?: (message: string) => void, signal?: AbortSignal): Promise<{ metadata: string }>;
+  experienceMetadata(input: Pick<AuthoringInput, "title" | "period" | "markdown">, onProgress?: (message: string) => void, signal?: AbortSignal): Promise<MetadataResult>;
 }
