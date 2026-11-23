@@ -15,8 +15,8 @@ export function reviewRecord(input: PreparedReview, results = [suggestion()]): R
   return { runId: crypto.randomUUID(), createdAt: new Date().toISOString(), document: input.document,
     materials: input.materials, reviewContext: input.reviewContext,
     moduleResults: { spellCheck: { moduleKey: "spellCheck", output: [], errors: [] },
-      finalReview: { moduleKey: "finalReview", output: { materialReviews: [], experienceRecommendations: [], results, resolutionChecks: [] }, errors: [] },
+      finalReview: { moduleKey: "finalReview", output: { materialReviews: [], requirementAssessments: [], experienceRecommendations: [], results, resolutionChecks: [] }, errors: [] },
       ...(input.materials.some(m => m.materialType === "jobPosting") ? { jobPostingAnalysis: { moduleKey: "jobPostingAnalysis", output: { summary: "채용 분석", evidence: [] }, errors: [] } } : {}),
       ...(input.materials.some(m => m.materialType === "company") ? { companyContextAnalysis: { moduleKey: "companyContextAnalysis", output: { summary: "회사 분석", evidence: [] }, errors: [] } } : {}) },
-    response: { status: "success", errors: [], materialReviews: [], experienceRecommendations: [], results, resolutionChecks: [] } };
+    response: { status: "success", errors: [], materialReviews: [], requirementAssessments: [], experienceRecommendations: [], results, resolutionChecks: [] } };
 }

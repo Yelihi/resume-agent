@@ -4,7 +4,9 @@ import type { Material, MaterialVersion, ContextMaterial } from "../material/ent
 import type { Review, SuggestionEntry, ReviewMaterial, PendingRun } from "../review/entities";
 import type { Experience, ExperienceDocument } from "../experience/entities";
 
-export type Workspace = { contexts: Context[]; resumeVersions: ResumeVersion[]; materials: Material[];
+import type { PortfolioReview, PortfolioVersion } from "../review/portfolio";
+
+export type Workspace = { portfolioVersions?: PortfolioVersion[]; portfolioReviews?: PortfolioReview[]; contexts: Context[]; resumeVersions: ResumeVersion[]; materials: Material[];
   materialVersions: MaterialVersion[]; contextMaterials: ContextMaterial[]; reviews: Review[];
   suggestions: SuggestionEntry[]; reviewMaterials: ReviewMaterial[]; activeRun?: PendingRun;
   experiences: Experience[]; experienceDocuments: ExperienceDocument[] };

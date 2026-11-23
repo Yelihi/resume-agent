@@ -1,3 +1,4 @@
+import { PageHeading } from "../components/PageHeading";
 import { useEffect, useState } from "react";
 import type { Account, BackupStatus } from "../domain/shared/account";
 import { OriginalDownload } from "../components/OriginalDownload";
@@ -30,7 +31,7 @@ export function SettingsView() {
     }, "API 키를 삭제하지 못했습니다.");
   };
   return <>
-    <header className="topbar"><div><span className="eyebrow">ACCOUNT</span><h1>설정</h1><p>내 계정과 데이터 이관을 관리하세요.</p></div></header>
+    <PageHeading title="설정" />
     <div className="library-page settings-page">
       <section className="library-card"><h2>{preview ? "미리보기 저장소" : "OpenAI API 키"}</h2>
         {!account ? <p role="status">계정을 확인하고 있습니다.</p> : account.mode === "server" ? <>
@@ -63,7 +64,7 @@ export function SettingsView() {
         <p role="status">{!backup ? "백업 상태를 불러오고 있습니다." : backup.error === "BACKUP_NOT_RUN" ? "아직 백업 실행 기록이 없습니다." : backup.error ? "백업 또는 보관 정책 처리를 확인해 주세요." : "마지막 백업 처리가 완료됐습니다."}</p>
         <button className="button-secondary" disabled={task.busy} onClick={() => void task.runTask(async () => { setBackup(await services.getBackupStatus()); }, "백업 상태를 불러오지 못했습니다.")}>상태 새로고침</button>
       </section>}
-      <p role="status">{message}</p>
+      {message && <p className="settings-status" role="status">{message}</p>}
     </div>
   </>;
 }

@@ -1,3 +1,4 @@
+import { PageHeading } from "../../components/PageHeading";
 import { Paperclip, ArrowLeft, ArrowRight, FileText, Link, CheckCircle, WarningCircle, Sparkle, Code, Eye } from "@phosphor-icons/react";
 import type { ApplicationController } from "../../application/useApplication";
 import { SegmentedTabs } from "../../components/SegmentedTabs";
@@ -20,13 +21,14 @@ export function ExperienceEditor({ application }: { application: ApplicationCont
   if (!editor) return null;
   const metadataReady = editor.metadataFor === editor.markdown && !!editor.metadata.trim();
   return <form className="experience-authoring" onSubmit={event => { event.preventDefault(); void workflow.saveExperience(); }}>
-    <header className="topbar"><div><h1>{editor.experienceId ? "경험 수정" : "경험 작성"}</h1><p>활동과 기여를 기록하고, 자료에 맞는 형식으로 경험을 정리하세요.</p></div><button type="button" disabled={task.busy} onClick={workflow.cancelEditor}><ArrowLeft size={16} />목록으로</button></header>
+    <PageHeading title={editor.experienceId ? "경험 수정" : "경험 작성"}
+      actions={<button className="button-secondary" type="button" disabled={task.busy} onClick={workflow.cancelEditor}><ArrowLeft size={16} aria-hidden="true" />목록으로</button>} />
     <div className="experience-authoring-body">
       <section className="experience-authoring-document" aria-label="경험 작성">
         <div className="experience-fields"><label>제목<input value={editor.title} disabled={task.busy} maxLength={500} placeholder="예: 결제 중복 요청 개선" onChange={event => workflow.updateEditor({ title: event.target.value })} /></label>
           <label>경험 기간 <span className="optional-label">선택</span><input value={editor.period} disabled={task.busy} maxLength={200} placeholder="예: 2026.08–진행 중" onChange={event => workflow.updateEditor({ period: event.target.value })} /></label></div>
         <section className="experience-authoring-metadata experience-talking-points" aria-labelledby="experience-points-heading">
-          <div className="experience-metadata-heading"><div><span className="experience-kicker">이 경험에서 꺼낼 이야기</span><h2 id="experience-points-heading">어필 포인트</h2></div>
+          <div className="experience-metadata-heading"><div><h2 id="experience-points-heading">어필 포인트</h2></div>
             <button type="button" disabled={task.busy || !editor.markdown.trim()} onClick={() => void workflow.generateMetadata()}><Sparkle size={16} aria-hidden="true" />메타데이터 생성</button></div>
           <p className="experience-hint">본문을 확인한 뒤 분석하세요. 어필할 기여와 판단, 예상 질문·답변 근거를 제안합니다.</p>
           {generation?.kind === "metadata" ? <GenerationLoading {...generation} /> : <>

@@ -7,6 +7,5 @@ export function AppShell({ children }: { children: ReactNode }) {
     <Link className="wordmark" to="/contexts" aria-label="Resume Review 홈">RR</Link>
     <nav aria-label="주 메뉴">{[{ path: "/contexts", label: "작업 공간", Icon: FileText }, { path: "/experiences", label: "경험 기록", Icon: Notebook }, { path: "/materials", label: "자료 보관함", Icon: FolderOpen }].map(({ path, label, Icon }) => <NavLink key={path} className={({ isActive }) => `rail-link ${isActive ? "is-active" : ""}`} to={path} aria-label={label}><Icon size={21} aria-hidden="true" /><span>{label}</span></NavLink>)}</nav>
     <NavLink className={({ isActive }) => `rail-link ${isActive ? "is-active" : ""}`} to="/settings" aria-label="설정"><Gear size={21} aria-hidden="true" /><span>설정</span></NavLink>
-    <p className="rail-note">원문은 유지하고<br />근거만 제안합니다.</p>
   </aside>{children}</div>;
 }

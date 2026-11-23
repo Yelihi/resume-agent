@@ -17,7 +17,7 @@ export type MaterialsDrawerProps = {
 
 export function MaterialsDrawer({ materials, versions, links, busy, locked, onClose, onDetach, onOpenPicker, onCreate, onManage }: MaterialsDrawerProps) {
   return <Dialog className="materials-drawer" labelledBy="materials-title" onDismiss={onClose}>
-    <div className="drawer-header"><div><span className="eyebrow">CONTEXT REFERENCES</span><h2 id="materials-title">검토 자료</h2></div><button className="icon-button" aria-label="검토 자료 닫기" onClick={onClose}><X size={21} aria-hidden="true" /></button></div>
+    <div className="drawer-header"><div><h2 id="materials-title">검토 자료</h2></div><button className="icon-button" aria-label="검토 자료 닫기" onClick={onClose}><X size={21} aria-hidden="true" /></button></div>
     <p className="drawer-intro">선택한 자료는 다음 검토에 최신 저장 버전으로 적용됩니다.</p>
     <div className="drawer-content"><h3>연결된 자료</h3>{links.length === 0 && <p className="material-empty">연결된 자료가 없습니다.</p>}
       {links.map(link => {

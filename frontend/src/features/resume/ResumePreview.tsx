@@ -25,7 +25,7 @@ export const ResumePreview = memo(function ResumePreview({ store, resumeVersionI
   const resume = useWorkspaceSelector(store, workspace => workspace.resumeVersions.find(version => version.id === resumeVersionId));
   return (
     <section className="viewer-panel" aria-label="문서 미리보기">
-      <div className="panel-heading"><div><span className="eyebrow">DOCUMENT</span><h2>문서 미리보기</h2></div><span className="panel-meta">버전 {resume?.version}</span></div>
+      <div className="panel-heading"><h2>문서 미리보기</h2><span className="panel-meta">버전 {resume?.version}</span></div>
       {resume ? <><OriginalHistory store={store} contextId={resume.contextId} /><ResumeViewer resume={resume} selectedLineIds={selectedLineIds} selectedSuggestionNumber={selectedSuggestionNumber} /></> : <p className="panel-empty">원문을 확인할 수 없는 이전 검토입니다.</p>}
     </section>
   );

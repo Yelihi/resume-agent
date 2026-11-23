@@ -16,7 +16,6 @@ export function ErrorPopup({ error, onClose }: ErrorPopupProps) {
       <header className="error-dialog-header">
         <span className="error-dialog-icon"><WarningCircle size={22} weight="fill" aria-hidden="true" /></span>
         <div>
-          <span className="eyebrow">ERROR</span>
           <h2 id="error-dialog-title">요청 오류</h2>
         </div>
         <button className="icon-button" type="button" aria-label="오류 팝업 닫기" onClick={onClose}>

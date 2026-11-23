@@ -4,12 +4,17 @@ import type { MaterialType, ReferenceMaterial, MaterialSummary } from "../materi
 import type { PageDocument, FlowDocument } from "../resume/contracts";
 
 export type ExperienceCandidate = { id: string; title: string; period: string; revision: number; markdown: string; metadata: string };
+export type RequirementAssessment = {
+  sourceId: string; requirement: string; reason: string; status: "matched" | "partial" | "unconfirmed";
+  resumeEvidence: SuggestionLocation[]; experienceEvidence: { experienceId: string; revision: number; quote: string }[];
+};
 export type ExperienceRecommendation = {
   experienceId: string; decision: "include" | "suggest" | "omit"; reason: string;
   jobEvidence: MaterialEvidence[]; resumeBullets: string[]; placement: string;
 };
 
 export type ReviewResponse = {
+            requirementAssessments?: RequirementAssessment[];
             experienceRecommendations?: ExperienceRecommendation[];
             /** Resolutionchecks */
             resolutionChecks?: ResolutionCheck[];
@@ -58,6 +63,7 @@ export type MaterialReviewDTO = {
         };
 
 export type SuggestionDTO = {
+            diagnostic?: { category: "writing-style"; ruleId: string; action: "ask" | "rewrite" } | null;
             /** Id */
             id?: string | null;
             /** Previoussuggestionid */
@@ -87,6 +93,7 @@ export type MaterialEvidence = {
 
 export type ReviewRecord = {
             /** Runid */
+            policyVersion?: string | null;
             runId: string;
             reviewContext?: ReviewContext | null;
             /**
@@ -193,6 +200,7 @@ export type ModuleResult_ContextAnalysis_ = {
         };
 
 export type ContextAnalysis = {
+            requirements?: ContextEvidence[];
             /** Summary */
             summary: string;
             /** Evidence */
@@ -217,6 +225,7 @@ export type ModuleResult_AiReviewOutput_ = {
         };
 
 export type AiReviewOutput = {
+            requirementAssessments?: RequirementAssessment[];
             experienceRecommendations?: ExperienceRecommendation[];
             /** Resolutionchecks */
             resolutionChecks?: ResolutionCheck[];

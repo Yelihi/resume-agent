@@ -46,7 +46,7 @@ it("shows selected include/omit decisions and writes an unselected experience on
   expect(within(suggested).queryByRole("button", { name: "이력서 문구 복사" })).not.toBeInTheDocument();
   expect(writeExperience).not.toHaveBeenCalled();
   const tabs = screen.getByRole("navigation", { name: "작업 공간 화면" });
-  expect(within(tabs).getAllByRole("link")).toHaveLength(1);
+  expect(within(tabs).getAllByRole("link")).toHaveLength(2);
   expect(within(tabs).getByRole("link", { name: "이력서 검토" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "경험 남기기" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "경험 추가" })).not.toBeInTheDocument();

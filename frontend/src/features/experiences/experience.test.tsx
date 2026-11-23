@@ -8,6 +8,27 @@ import type { AuthoringInput, WritingResult } from "../../domain/experience/enti
 import { MarkdownDocument, summaryMarkdown } from "./MarkdownDocument";
 
 const policy = { maximumFileSizeBytes: { pdf: 1000, image: 1000, docx: 1000, txt: 1000 }, maximumDirectTextCharacters: 100_000 };
+
+it("shows body text in experience previews and falls back to a source for heading-only records", async () => {
+  const store = new IndexedDbWorkspaceRepository(`experience-preview-${crypto.randomUUID()}`);
+  await store.saveExperience({
+    title: "검색 개선", period: "", sources: [], metadata: "측정 근거",
+    markdown: "## 상황\n\n검색 API를 **운영**했습니다.\n\n- [측정 결과](https://example.com)를 확인했습니다.\n\n## 판단\n\n```text\ngraph LR\n```",
+  });
+  await store.saveExperience({
+    title: "작업 초안", period: "", markdown: "# 작성 예정", metadata: "초안",
+    sources: [{ id: "note", kind: "note", name: "작업 메모", text: "기존 작업 메모입니다.", createdAt: new Date().toISOString() }],
+  });
+  render(<App router={createTestRouter(["/experiences"])} store={store} services={{ getValidationPolicy: async () => policy }} />);
+  const list = within(await screen.findByRole("complementary", { name: "경험 기록 목록" }));
+  const record = await list.findByRole("button", { name: /검색 개선/ });
+  expect(record).toHaveTextContent("검색 API를 운영했습니다. 측정 결과를 확인했습니다.");
+  expect(record).not.toHaveTextContent(/상황|판단|example\.com|graph LR/);
+  expect(list.getByRole("button", { name: /작업 초안/ })).toHaveTextContent("기존 작업 메모입니다.");
+  await userEvent.click(record);
+  expect(screen.getByRole("heading", { name: "상황" })).toBeVisible();
+});
+
 const result: WritingResult = { markdown: "# 로그인 요청 개선\n\n기간 확인 필요\n\n## 이력서용 요약\n\n- 중복 요청을 제거했다.\n\n## 상세 설명\n\n중복 요청이 발생하는 조건을 확인했다.\n\n## 근거\n\n작업 메모", summary: "- 중복 요청을 제거했다.", questions: ["어떤 조건에서 중복 요청이 발생했나요?"], sourceNotes: [] };
 
 it("keeps editable preparation with the experience through regeneration, save failure and reopening", async () => {

@@ -1,0 +1,172 @@
+.review-desk {
+  --desk-gutter: clamp(16px, 3vw, 48px);
+  min-height: 100dvh;
+  color: var(--ink);
+  background: var(--surface);
+  font-family: var(--font-sans);
+}
+
+
+.review-desk .desk-header, .review-desk .desk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-inline: var(--desk-gutter);
+  background: var(--surface);
+}
+.review-desk .desk-header { padding-block: 32px 20px; }
+.desk-identity, .desk-actions { display: flex; align-items: center; gap: 10px; }
+.desk-actions { flex-wrap: wrap; }
+.desk-identity { min-width: 0; }
+.desk-identity h1 { margin: 0; font: 300 clamp(28px, 3vw, 48px)/1.12 var(--font-display); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.desk-identity p { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.review-desk .desk-back { display: grid; place-items: center; flex: none; width: 38px; min-height: 38px; border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 0; color: var(--ink); }
+.review-desk .desk-back:hover { background: var(--surface-accent); }
+.review-desk :is(.button-primary, .desk-upload) { background: var(--accent); color: white; border: 1px solid var(--accent); border-radius: var(--radius-pill); }
+.review-desk :is(.button-primary:hover:not(:disabled), .desk-upload:hover) { background: var(--accent-dark); color: white; border-color: var(--accent-dark); }
+.review-desk .button-secondary { border-color: var(--line); border-radius: var(--radius-pill); color: var(--ink); }
+.review-desk .button-secondary:hover:not(:disabled) { border-color: var(--accent); background: var(--surface-accent); }
+.review-desk .desk-bar { border-bottom: 1px solid var(--line); }
+.review-desk .workspace-tabs { padding: 0; gap: 8px; border: 0; background: transparent; }
+.review-desk .workspace-tabs a { padding: 7px 14px; margin-block: 8px; border: 1px solid var(--line); border-radius: var(--radius-pill); font-size: 14px; }
+.review-desk .workspace-tabs a[aria-current=page] { color: var(--surface); background: var(--ink); border-color: var(--ink); }
+.review-desk .desk-bar label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 12px; font-weight: 650; }
+.review-desk select { min-height: 34px; max-width: min(100%, 22rem); border: 1px solid var(--line); border-radius: var(--radius-sm); padding-block: 5px; padding-inline-start: 8px; color: var(--ink); background-color: var(--surface); }
+.desk-upload { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; font-size: 14px; font-weight: 500; }
+.desk-upload input { position: absolute; inset: 0; width: 100%; opacity: 0; }
+.desk-upload:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+.desk-upload:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+.desk-notice { margin: 14px var(--desk-gutter) 0; padding: 8px 12px; color: var(--ink-warning); background: var(--surface-warning); font-size: 13px; }
+.desk-experience { margin: 12px var(--desk-gutter) 0; }
+.review-desk .review-experience-selection { margin: 0; border: 0; background: transparent; padding: 4px 0; color: var(--muted); }
+.review-desk .review-experience-selection summary { font-size: 13px; }
+
+.review-desk :is(.review-workspace, .desk-panes) {
+  display: grid;
+  grid-template-columns: minmax(0, 1.34fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+  height: auto;
+  min-height: 0;
+  margin: 20px var(--desk-gutter) 0;
+  padding-bottom: 32px;
+}
+.review-desk :is(.viewer-panel, .results-panel, .desk-portfolio-viewer) {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+.review-desk :is(.viewer-panel, .desk-portfolio-viewer) {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 16px;
+  height: clamp(470px, 73dvh, 900px);
+  background: var(--workspace);
+  border-radius: var(--radius-document);
+}
+.review-desk :is(.panel-heading, .results-header) {
+  min-height: 60px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 18px;
+  background: var(--surface);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.review-desk :is(.panel-heading h2, .results-header h2) { font-size: 17px; font-weight: 500; letter-spacing: -.02em; }
+.review-desk .panel-meta { max-width: 65%; color: var(--muted); overflow-wrap: anywhere; }
+.review-desk .original-history { margin: 0; border-radius: 0; border: 0; border-bottom: 1px solid var(--line); padding: 8px 18px; background: var(--surface); }
+.review-desk .original-history summary { color: var(--muted); }
+.review-desk .flow-viewer { width: min(660px, calc(100% - 36px)); margin: 18px auto; padding: clamp(20px, 3.2vw, 46px); box-shadow: 0 0 0 1px #0000000c, 0 2px 4px #0000000a; font-size: 15px; line-height: 1.8; }
+.review-desk .pdf-viewer { flex: 1; min-height: 0; width: 100%; background: var(--workspace); padding: clamp(10px, 2vw, 22px); }
+.review-desk .flow-block > span[data-selected="true"] { box-shadow: 0 0 0 3px var(--highlight-fill); }
+.portfolio-pagination { min-width: 0; border: 0; border-bottom: 1px solid var(--line); padding: 6px 12px; margin: 0; background: var(--surface); }
+.review-desk .portfolio-pagination .pagination { justify-content: flex-start; flex-wrap: wrap; padding: 0; gap: 5px; }
+.review-desk .portfolio-pagination button { min-height: 32px; min-width: 32px; padding: 3px 6px; border-radius: var(--radius-pill); }
+.review-desk .portfolio-pagination button[aria-current="page"],
+.review-desk .portfolio-pagination button[aria-current="page"]:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.review-desk .pagination-status { flex-basis: auto; margin-inline-start: auto; color: var(--muted); font-size: 12px; }
+
+.desk-count { display: inline-block; margin-left: 5px; border-radius: var(--radius-pill); padding: 2px 7px; background: var(--workspace); font-size: 12px; font-variant-numeric: tabular-nums; }
+.desk-status, .desk-tag { display: inline-block; width: fit-content; border-radius: var(--radius-pill); padding: 4px 7px; background: var(--workspace); color: var(--muted); font-size: 11px; font-weight: 650; line-height: 1.4; }
+.desk-status, .desk-tag[data-status=matched] { background: var(--surface-success); color: var(--ink-success); }
+.desk-tag:is([data-status=partial], [data-status=unconfirmed]) { background: var(--surface-warning); color: var(--ink-warning); }
+.desk-filter, .desk-modality { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 12px 18px; }
+.desk-filter button { min-height: 32px; border: 1px solid transparent; border-radius: var(--radius-pill); padding: 4px 10px; color: var(--muted); font-size: 13px; }
+.desk-filter button[aria-pressed=true] { border-color: var(--line-selected); background: var(--surface-accent); color: var(--accent); }
+.review-desk .suggestion-list article { gap: 12px; padding: 16px 18px; border: 0; border-bottom: 1px solid var(--line); }
+.review-desk .suggestion-title { flex-wrap: wrap; }
+.review-desk .suggestion-index { border-radius: var(--radius-pill); background: var(--surface-accent); color: var(--accent); }
+.review-desk .suggestion-title h3 { font-size: 16px; font-weight: 500; }
+.review-desk .suggestion-sources { margin-inline-start: auto; }
+.review-desk .suggestion-sources span { border: 0; border-radius: 4px; background: var(--workspace); color: var(--muted); }
+.review-desk .suggestion-label { color: var(--muted); }
+.review-desk .suggestion-comparison button { gap: 7px; padding: 6px 0; color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
+.review-desk .suggestion-comparison button svg { flex: none; color: var(--accent); }
+.review-desk .suggestion-rewrite, .desk-change { padding: 9px 10px; color: var(--ink); background: var(--surface-accent); }
+.review-desk .suggestion-reason { font-size: 13px; color: var(--muted); }
+.review-desk .suggestion-feedback { margin-top: 0; border: 0; padding-top: 0; flex-wrap: wrap; }
+.review-desk .suggestion-feedback button { min-height: 34px; border-radius: var(--radius-pill); }
+.review-desk .material-review-summary { display: block; padding: 16px 18px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.review-desk :is(.material-review-summary h3, .portfolio-consistency h3, .desk-findings > h3) { margin: 0 0 10px; font-size: 16px; }
+.review-desk .material-source-summary { padding: 0; border: 0; }
+.review-desk .material-source-summary h4 { font-size: 13px; color: var(--muted); }
+.desk-requirements { padding: 0; margin: 6px 0; list-style: none; }
+.desk-requirements li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.desk-requirements li > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px; }
+.review-desk .desk-requirements li strong { font-size: 13px; }
+.review-desk .material-review-summary p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+.desk-requirements blockquote, .desk-findings blockquote { margin: 8px 0 0; padding: 6px 10px; background: var(--workspace); font-size: 13px; line-height: 1.55; }
+.desk-requirements blockquote small { display: block; color: var(--muted); }
+.desk-source-details { padding-top: 8px; color: var(--muted); font-size: 12px; }
+.desk-source-details summary { cursor: pointer; }
+.review-desk--portfolio .results-panel > :is(p, label, button) { margin: 10px 18px; }
+.review-desk--portfolio .results-panel > button { align-self: flex-start; }
+.review-desk--portfolio .results-panel > .desk-modality { margin: 0; }
+.portfolio-consistency { margin: 0 18px 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--workspace); }
+.portfolio-consistency h4, .desk-findings h4 { margin: 0; font-size: 14px; }
+.portfolio-consistency p, .desk-findings p { font-size: 14px; line-height: 1.55; }
+.portfolio-citations { display: grid; grid-template-columns: minmax(0, 1fr); margin-top: 10px; border-top: 1px solid var(--line); }
+.portfolio-citations blockquote { margin: 0; overflow-wrap: anywhere; padding: 10px 0; }
+.portfolio-citations blockquote + blockquote { border-block-start: 1px solid var(--line); }
+@media (min-width: 1100px) {
+  .portfolio-citations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .portfolio-citations blockquote + blockquote { border-block-start: 0; border-inline-start: 1px solid var(--line); padding-inline-start: 12px; }
+  .portfolio-citations blockquote:first-child { padding-inline-end: 12px; }
+}
+.portfolio-citations strong { font-size: 12px; }
+.portfolio-citations small { display: block; color: var(--muted); margin-top: 3px; }
+.portfolio-citations p { margin: 8px 0 0; }
+.desk-findings > h3 { padding: 4px 18px 0; }
+.review-desk--portfolio > .panel-empty { margin: 24px var(--desk-gutter); border: 1px dashed var(--line); border-radius: var(--radius-panel); background: var(--surface); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .review-desk :is(.desk-back, .workspace-tabs a, .desk-upload) {
+    transition: background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out, transform 140ms ease;
+  }
+  .review-desk :is(.desk-notice, .viewer-panel, .desk-portfolio-viewer, .suggestion-list > article,
+    .material-review-summary, .portfolio-consistency, .desk-modality, .portfolio-result-empty, .panel-empty) {
+    animation: content-enter 180ms ease-out;
+  }
+  .review-desk :is(.original-history, .review-experience-selection, .desk-source-details)[open] > :not(summary) {
+    animation: content-enter 150ms ease-out;
+  }
+  .review-desk .flow-block > span { transition: background-color 150ms ease-out, box-shadow 150ms ease-out; }
+}
+
+@media (max-width: 900px) {
+  .review-desk :is(.review-workspace, .desk-panes) { grid-template-columns: minmax(0, 1fr); }
+  .review-desk :is(.viewer-panel, .desk-portfolio-viewer) { position: static; height: clamp(320px, 55dvh, 500px); }
+  .review-desk .desk-bar { padding-bottom: 8px; }
+  .review-desk .desk-bar label { max-width: 100%; }
+}
+@media (max-width: 500px) {
+  .review-desk .desk-header { padding-block: 14px 10px; }
+  .review-desk .desk-actions button { padding-inline: 8px; font-size: 12px; }
+  .review-desk :is(.review-workspace, .desk-panes) { gap: 12px; margin-top: 12px; }
+}
