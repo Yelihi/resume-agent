@@ -5,11 +5,15 @@ import type { Rating, Decision, PreparedReview } from "../review/entities";
 import type { ReviewRecord } from "../review/contracts";
 import type { ExperienceInput, ExperienceDocument } from "../experience/entities";
 
+import type { PortfolioReview, PortfolioVersion } from "../review/portfolio";
+
 /** Atomic local workspace persistence and committed snapshot subscriptions. */
 export interface WorkspaceRepository {
   getSnapshot(): Workspace;
   getLoaded(): boolean;
   subscribe(listener: () => void): () => void;
+  savePortfolioVersion(version: PortfolioVersion): Promise<void>;
+  savePortfolioReview(review: PortfolioReview): Promise<void>;
   load(): Promise<Workspace>;
   saveExperience(input: ExperienceInput, id?: string, baseRevision?: number): Promise<string>;
   saveExperienceDocument(document: Omit<ExperienceDocument, "revision" | "createdAt" | "updatedAt">, baseRevision?: number): Promise<void>;

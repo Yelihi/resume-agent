@@ -88,6 +88,8 @@ export class ServerWorkspaceRepository implements WorkspaceRepository {
       return decodeFiles(envelope.result);
     } catch (error) { await discardUploads(files); throw error; }
   }
+  savePortfolioVersion: WorkspaceRepository["savePortfolioVersion"] = (...args) => this.command("savePortfolioVersion", args);
+  async savePortfolioReview() { await this.load(); }
   saveExperience: WorkspaceRepository["saveExperience"] = (...args) => this.command("saveExperience", args);
   saveExperienceDocument: WorkspaceRepository["saveExperienceDocument"] = (...args) => this.command("saveExperienceDocument", args);
   deleteExperienceDocument: WorkspaceRepository["deleteExperienceDocument"] = (...args) => this.command("deleteExperienceDocument", args);

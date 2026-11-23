@@ -9,7 +9,7 @@ export function InterviewPreparation({ questions, onChange, disabled = false }: 
   const update = (index: number, change: Partial<InterviewQuestion>) =>
     onChange?.(questions.map((item, i) => i === index ? { ...item, ...change } : item));
   return <section className="experience-interview" aria-labelledby="experience-interview-heading">
-    <header className="experience-preparation-heading"><div><span className="experience-kicker">면접 준비</span>
+    <header className="experience-preparation-heading"><div>
       <h2 id="experience-interview-heading">예상 질문과 답변 메모 <span className="experience-question-count">{questions.length}/20</span></h2>
     </div>{onChange && <button type="button" disabled={disabled || questions.length >= 20}
       onClick={() => onChange([...questions, { question: "", answer: "", evidence: "" }])}><Plus size={16} aria-hidden="true" />질문 추가</button>}</header>

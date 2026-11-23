@@ -40,6 +40,10 @@ it("persists manual selection and restores pinned candidates and recommendations
     { experienceId: a, decision: "include" as const, reason: "안정성 요구에 부합", jobEvidence: [{ sourceId: materialId, consideredPoint: "안정성" }], resumeBullets: ["요청 원인을 분석했다."], placement: "프로젝트 보강" },
     { experienceId: b, decision: "suggest" as const, reason: "장애 분석 경험도 추가할까요?", jobEvidence: [{ sourceId: materialId, consideredPoint: "안정성" }], resumeBullets: [], placement: "" },
   ];
+  const assessments = [{ sourceId: materialId, requirement: "안정성", reason: "요청을 분석한 경험이 있습니다.", status: "partial" as const,
+    resumeEvidence: [], experienceEvidence: [{ experienceId: a, revision: 1, quote: "요청 개선 문제를 분석했다." }] }];
+  record.response.requirementAssessments = assessments;
+  record.moduleResults.finalReview.output!.requirementAssessments = assessments;
   record.response.experienceRecommendations = recommendations;
   record.moduleResults.finalReview.output!.experienceRecommendations = recommendations;
   await store.registerRun(record.runId, input);
@@ -59,6 +63,8 @@ it("persists manual selection and restores pinned candidates and recommendations
     expect(restored.materials).toEqual(input.materials);
     expect(restored.response.experienceRecommendations).toEqual(recommendations);
     expect(restored.moduleResults.finalReview.output?.experienceRecommendations).toEqual(recommendations);
+    expect(restored.response.requirementAssessments).toEqual(assessments);
+    expect(restored.moduleResults.finalReview.output?.requirementAssessments).toEqual(assessments);
     expect(restored.response.results).toEqual([]);
   }
   const next = await reloaded.prepareReview(contextId);

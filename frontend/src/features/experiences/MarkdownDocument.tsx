@@ -1,6 +1,36 @@
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
+
+const previewParser = unified().use(remarkParse).use(remarkGfm).freeze();
+
+type PreviewNode = { type: string; value?: string; children?: PreviewNode[] };
+
+function previewText(node: PreviewNode): string {
+  switch (node.type) {
+    case "text":
+    case "inlineCode":
+      return node.value ?? "";
+    case "heading":
+    case "image":
+    case "imageReference":
+    case "code":
+    case "html":
+      return "";
+    case "break":
+      return " ";
+    default: {
+      const text = node.children?.map(previewText).join("") ?? "";
+      return node.type === "paragraph" || node.type === "tableCell" ? text + " " : text;
+    }
+  }
+}
+
+export function previewMarkdown(markdown: string): string {
+  return previewText(previewParser.parse(markdown)).replace(/\s+/g, " ").trim();
+}
 
 function Mermaid({ code }: { code: string }) {
   const [result, setResult] = useState<{ code: string; url?: string; failed?: boolean }>();

@@ -16,8 +16,8 @@ export type MaterialEditorProps = {
 export function MaterialEditor({ editor, updateEditor, onCancel, onExtract, onSave, busy }: MaterialEditorProps) {
   const titleRef = useRef<HTMLInputElement>(null);
   return <Dialog className="material-editor" label="자료 미리보기" onDismiss={onCancel} busy={busy} initialFocusRef={titleRef}>
-    <div className="panel-heading"><div><span className="eyebrow">{editor.materialId ? "NEW MATERIAL VERSION" : "MATERIAL DRAFT"}</span><h2>{editor.materialId ? "자료 수정" : "새 자료 등록"}</h2></div><button disabled={busy} className="text-button" onClick={onCancel}>편집 취소</button></div>
-    <p>추출 내용을 확인하고 수정한 뒤 저장하세요. 저장 전 내용은 검토에 사용되지 않습니다.</p>
+    <div className="panel-heading"><div><h2>{editor.materialId ? "자료 수정" : "새 자료 등록"}</h2></div><button disabled={busy} className="text-button" onClick={onCancel}>편집 취소</button></div>
+    <p>검토에 사용할 내용을 확인한 뒤 저장하세요.</p>
     <label>자료 제목<input ref={titleRef} aria-label="자료 제목" disabled={busy} value={editor.title} onChange={event => updateEditor({ title: event.target.value })} /></label>
     <label>자료 종류<select aria-label="자료 종류" disabled={busy || !!editor.materialId} value={editor.materialType} onChange={event => updateEditor({ materialType: event.target.value === "company" ? "company" : "jobPosting" })}><option value="jobPosting">채용 공고</option><option value="company">회사 자료</option></select></label>
     {!editor.previewed ? <>

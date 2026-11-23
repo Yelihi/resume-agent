@@ -20,6 +20,10 @@ export function reconcileWorkspace(previous: Workspace, incoming: Workspace): Wo
       ? { ...version, original: existing.original } : version;
   });
   const workspace: Workspace = {
+    portfolioVersions: (incoming.portfolioVersions?.length || previous.portfolioVersions) ?
+      shareRecords(previous.portfolioVersions ?? [], incoming.portfolioVersions ?? []) : undefined,
+    portfolioReviews: (incoming.portfolioReviews?.length || previous.portfolioReviews) ?
+      shareRecords(previous.portfolioReviews ?? [], incoming.portfolioReviews ?? []) : undefined,
     experiences: shareRecords(previous.experiences, incoming.experiences),
     experienceDocuments: shareRecords(previous.experienceDocuments, incoming.experienceDocuments),
     contexts: shareRecords(previous.contexts, incoming.contexts),

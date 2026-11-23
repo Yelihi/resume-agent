@@ -233,3 +233,17 @@ it("allows uploading a first available resume after migrating a deleted legacy r
   expect(state.suggestions[0].resumeVersionId).toBeNull();
   await expect(migrated.addResumeVersion(context.id, resumeInput(), context.latestVersionId)).rejects.toThrow("다른 화면");
 });
+
+it("restores the pinned writing policy and its diagnostic after a local review", async () => {
+  const db = store();
+  const id = await db.createContext("문체", resumeInput());
+  const input = await db.prepareReview(id);
+  const record = reviewRecord(input);
+  record.policyVersion = "ko-style-1";
+  record.response.results[0].diagnostic = { category: "writing-style", ruleId: "analysis", action: "rewrite" };
+  await db.registerRun(record.runId, input);
+  await db.completeReview(record);
+  const restored = await db.restoreRecord(record.runId);
+  expect(restored.policyVersion).toBe(record.policyVersion);
+  expect(restored.response.results[0].diagnostic).toEqual(record.response.results[0].diagnostic);
+});

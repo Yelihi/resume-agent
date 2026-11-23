@@ -6,4 +6,6 @@ import { cancelReview, followReview, getReviewRecord, releaseReview, retryReview
 import { getAccount, saveOpenAiKey, deleteOpenAiKey, getBackupStatus } from "./account/http";
 import { exportWorkspace, importWorkspace } from "./workspace/transfer";
 
-export const defaultServices: ApplicationServices = { getValidationPolicy, extractText, extractFile, startReview, followReview, getReviewRecord, releaseReview, cancelReview, retryReview, previewMaterial, writeExperience, draftExperience, experienceMetadata, getAccount, saveOpenAiKey, deleteOpenAiKey, getBackupStatus, exportWorkspace, importWorkspace };
+import { portfolioGateway } from "./review/portfolio";
+
+export const defaultServices: ApplicationServices = { ...portfolioGateway, getValidationPolicy, extractText, extractFile, startReview, followReview, getReviewRecord, releaseReview, cancelReview, retryReview, previewMaterial, writeExperience, draftExperience, experienceMetadata, getAccount, saveOpenAiKey, deleteOpenAiKey, getBackupStatus, exportWorkspace, importWorkspace };

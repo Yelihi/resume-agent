@@ -8,7 +8,11 @@ import { reconcileWorkspace } from "./snapshot";
 import type { WorkspaceRepository } from "../../domain/workspace/ports";
 import type { Experience, ExperienceInput, ExperienceDocument } from "../../domain/experience/entities";
 
+import type { PortfolioReview, PortfolioVersion } from "../../domain/review/portfolio";
+
 interface WorkspaceDB extends DBSchema {
+  portfolioVersions: { key: string; value: PortfolioVersion; indexes: { contextId: string } };
+  portfolioReviews: { key: string; value: PortfolioReview; indexes: { contextId: string } };
   experiences: { key: string; value: Experience };
   experienceDocuments: { key: string; value: ExperienceDocument; indexes: { contextId: string } };
   contexts: { key: string; value: Context };
@@ -21,7 +25,7 @@ interface WorkspaceDB extends DBSchema {
   reviewMaterials: { key: string; value: ReviewMaterial; indexes: { reviewId: string; materialVersionId: string } };
   meta: { key: string; value: PendingRun };
 }
-const stores = ["contexts", "resumeVersions", "materials", "materialVersions", "contextMaterials", "reviews", "suggestions", "reviewMaterials", "meta", "experiences", "experienceDocuments"] as const;
+const stores = ["contexts", "resumeVersions", "materials", "materialVersions", "contextMaterials", "reviews", "suggestions", "reviewMaterials", "meta", "experiences", "experienceDocuments", "portfolioVersions", "portfolioReviews"] as const;
 type WriteTx = IDBPTransaction<WorkspaceDB, typeof stores, "readwrite">;
 const uuid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -61,8 +65,12 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
   constructor(private readonly databaseName = "resume-agent") {}
 
   private database() {
-    if (!this.connection) this.connection = openDB<WorkspaceDB>(this.databaseName, 3, {
+    if (!this.connection) this.connection = openDB<WorkspaceDB>(this.databaseName, 4, {
       upgrade: (db, old, _new, transaction) => {
+        for (const name of ["portfolioVersions", "portfolioReviews"] as const) {
+          db.createObjectStore(name, { keyPath: "id" }).createIndex("contextId", "contextId");
+        }
+        if (old >= 3) return;
         db.createObjectStore("experiences", { keyPath: "id" });
         db.createObjectStore("experienceDocuments", { keyPath: "id" }).createIndex("contextId", "contextId");
         if (old >= 2) return;
@@ -118,16 +126,32 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
   };
 
   private async readWorkspace(tx: IDBPTransaction<WorkspaceDB, typeof stores, "readonly" | "readwrite">): Promise<Workspace> {
-    const [contexts, resumeVersions, materials, materialVersions, contextMaterials, reviews, suggestions, reviewMaterials, activeRun, experiences, experienceDocuments] = await Promise.all([
+    const [contexts, resumeVersions, materials, materialVersions, contextMaterials, reviews, suggestions, reviewMaterials, activeRun, experiences, experienceDocuments, portfolioVersions, portfolioReviews] = await Promise.all([
       tx.objectStore("contexts").getAll(), tx.objectStore("resumeVersions").getAll(), tx.objectStore("materials").getAll(),
       tx.objectStore("materialVersions").getAll(), tx.objectStore("contextMaterials").getAll(), tx.objectStore("reviews").getAll(),
       tx.objectStore("suggestions").getAll(), tx.objectStore("reviewMaterials").getAll(), tx.objectStore("meta").get("activeRun"),
       tx.objectStore("experiences").getAll(), tx.objectStore("experienceDocuments").getAll(),
+      tx.objectStore("portfolioVersions").getAll(), tx.objectStore("portfolioReviews").getAll(),
     ]);
-    return { contexts: contexts.sort((a,b) => a.createdAt.localeCompare(b.createdAt)),
+    return { portfolioVersions, portfolioReviews, contexts: contexts.sort((a,b) => a.createdAt.localeCompare(b.createdAt)),
       resumeVersions: resumeVersions.sort((a,b) => a.version-b.version), materials, materialVersions, contextMaterials,
       reviews: reviews.sort((a,b) => a.createdAt.localeCompare(b.createdAt)), suggestions, reviewMaterials, activeRun,
       experiences: experiences.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt)), experienceDocuments };
+  }
+
+  async savePortfolioVersion(version: PortfolioVersion) {
+    await this.write(async tx => {
+      await this.editable(tx, version.contextId);
+      await tx.objectStore("portfolioVersions").add(version);
+    });
+  }
+
+  async savePortfolioReview(review: PortfolioReview) {
+    await this.write(async tx => {
+      const version = requireValue(await tx.objectStore("portfolioVersions").get(review.portfolioVersionId), "포트폴리오 버전을 찾을 수 없습니다.");
+      if (version.contextId !== review.contextId || review.pageNumber < 1 || review.pageNumber > version.pageCount) throw new Error("평가 페이지가 일치하지 않습니다.");
+      await tx.objectStore("portfolioReviews").add(review);
+    });
   }
 
   async saveExperience(input: ExperienceInput, id?: string, baseRevision?: number): Promise<string> {
@@ -271,7 +295,7 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
         for (const link of await tx.objectStore("reviewMaterials").index("reviewId").getAll(review.id)) await tx.objectStore("reviewMaterials").delete(link.id);
         await tx.objectStore("reviews").delete(review.id);
       }
-      for (const name of ["resumeVersions", "suggestions", "contextMaterials", "experienceDocuments"] as const) {
+      for (const name of ["resumeVersions", "suggestions", "contextMaterials", "experienceDocuments", "portfolioVersions", "portfolioReviews"] as const) {
         for (const item of await tx.objectStore(name).index("contextId").getAll(contextId)) await tx.objectStore(name).delete(item.id);
       }
       await tx.objectStore("contexts").delete(contextId);
@@ -445,8 +469,8 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
       }
       const { finalReview, ...modules } = record.moduleResults;
       const review: Review = { id: record.runId, contextId: context.id, resumeVersionId: active.input.resumeVersionId,
-        createdAt: record.createdAt, input: active.input, status: record.response.status, errors: record.response.errors,
-        materialReviews: record.response.materialReviews, experienceRecommendations: record.response.experienceRecommendations ?? [], resolutionChecks: checks, resultIds, suggestionIds: successful ? suggestionIds : (previous?.suggestionIds ?? []),
+        policyVersion: record.policyVersion, createdAt: record.createdAt, input: active.input, status: record.response.status, errors: record.response.errors,
+        materialReviews: record.response.materialReviews, requirementAssessments: record.response.requirementAssessments ?? [], experienceRecommendations: record.response.experienceRecommendations ?? [], resolutionChecks: checks, resultIds, suggestionIds: successful ? suggestionIds : (previous?.suggestionIds ?? []),
         modules, finalErrors: finalReview.errors, finalFailed: finalReview.output == null };
       await tx.objectStore("reviews").put(review);
       for (const versionId of Object.values(active.input.materialVersions ?? {})) {
@@ -466,10 +490,10 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
     const results = review.resultIds.map(id => requireValue(state.suggestions.find(s => s.id === id), "제안을 찾을 수 없습니다.").content);
     const reviewContext: ReviewContext = { ...review.input, feedback: review.input.feedback.map(reference => ({ ...reference,
       suggestion: requireValue(state.suggestions.find(s => s.id === reference.id && s.contextId === review.contextId), "이전 제안 연결이 올바르지 않습니다.").content })) };
-    return { runId: review.id, createdAt: review.createdAt, document, materials: this.materialInputs(state, review.input.materialVersions ?? {}), reviewContext,
-      response: { status: review.status, errors: review.errors, materialReviews: review.materialReviews, experienceRecommendations: review.experienceRecommendations ?? [], resolutionChecks: review.resolutionChecks, results },
+    return { runId: review.id, policyVersion: review.policyVersion, createdAt: review.createdAt, document, materials: this.materialInputs(state, review.input.materialVersions ?? {}), reviewContext,
+      response: { status: review.status, errors: review.errors, materialReviews: review.materialReviews, requirementAssessments: review.requirementAssessments ?? [], experienceRecommendations: review.experienceRecommendations ?? [], resolutionChecks: review.resolutionChecks, results },
       moduleResults: { ...review.modules, finalReview: { moduleKey: "finalReview", errors: review.finalErrors,
-        output: review.finalFailed ? null : { materialReviews: review.materialReviews, experienceRecommendations: review.experienceRecommendations ?? [], resolutionChecks: review.resolutionChecks, results } } } };
+        output: review.finalFailed ? null : { materialReviews: review.materialReviews, requirementAssessments: review.requirementAssessments ?? [], experienceRecommendations: review.experienceRecommendations ?? [], resolutionChecks: review.resolutionChecks, results } } } };
   }
 
   private async pinLegacyMaterials(tx: WriteTx, materials: ReferenceMaterial[]) {

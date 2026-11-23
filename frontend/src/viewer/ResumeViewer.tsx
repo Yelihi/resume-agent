@@ -162,7 +162,7 @@ function ImageViewer({
   );
 }
 
-function PdfViewer({
+export function PdfViewer({
   file,
   document,
   selectedLineIds,

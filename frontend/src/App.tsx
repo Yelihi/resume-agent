@@ -9,6 +9,7 @@ import type { ApplicationDependencies } from "./application/useApplication";
 import { ApplicationDependenciesContext } from "./views/context";
 import { ApplicationLayout } from "./views/ApplicationLayout";
 import { WorkspaceListView } from "./views/WorkspaceListView";
+import { PortfolioView } from "./views/PortfolioView";
 import { WorkspaceView } from "./views/WorkspaceView";
 import { ResumeUploadView } from "./views/ResumeUploadView";
 import { MaterialLibraryView } from "./views/MaterialLibraryView";
@@ -25,6 +26,7 @@ export const appRoutes: RouteObject[] = [{
     { path: "contexts", element: <WorkspaceListView />, handle: { page: "list" } },
     { path: "contexts/new", element: <ResumeUploadView />, handle: { page: "new" } },
     { path: "contexts/:contextId", element: <WorkspaceView />, handle: { page: "context" } },
+    { path: "contexts/:contextId/portfolio", element: <PortfolioView />, handle: { page: "context" } },
     { path: "contexts/:contextId/upload", element: <ResumeUploadView />, handle: { page: "upload" } },
     { path: "materials", element: <MaterialLibraryView />, handle: { page: "materials" } },
     { path: "experiences", element: <ExperienceLibraryView />, handle: { page: "experiences" } },
