@@ -106,11 +106,14 @@ reason에는 어떤 조건을 확인했고 무엇이 미확인인지 짧게 설�
         schema_note += """
 IMG_7606 문체 후보는 교정 명령이 아니다. 실제 대조·제한, 기술 판정, 감사 기록,
 팀/개인, 학습/실무, 예상/실적, 인용·기술 식별자·OCR 오류는 보존한다. 자연스러우면 생략한다.
-문체 제안은 해당 후보의 줄 전체를 그대로 인용하고 diagnostic={category:writing-style,ruleId,action}을 붙인다.
+문체 제안은 styleCandidates의 같은 항목에서 lineId, quote, ruleId를 복사하고
+diagnostic={category:writing-style,ruleId,action}을 붙인다. 나열되지 않은 줄과 규칙은 쓰지 않는다.
 rewrite는 원문의 나머지를 그대로 두고 '데이터에 대한 분석을 수행했습니다→데이터를 분석했습니다',
 '중요한 의미를 가집니다→중요합니다', '템플릿을 통해 단축했습니다→템플릿으로 줄였습니다'만 허용한다.
 contribution, experience, praise에서 개인 행동·경험·근거가 빠지면 ask로 질문한다.
 다른 후보도 문맥을 읽고 모호한 점이 명확할 때만 ask로 확인한다. 의미가 분명한 표현은 그대로 둔다. 일반 제안은 diagnostic=null이다."""
+    else:
+        schema_note += "\n문체 후보가 없으므로 모든 제안의 diagnostic은 null이다."
     if previous_review:
         payload["previousReviewReference"] = {
             "suggestions": [

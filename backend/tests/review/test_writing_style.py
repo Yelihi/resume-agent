@@ -25,12 +25,13 @@ from app.review.validation import assemble_review_response
 def test_slide_candidate_uses_real_line(rule, text):
     messages = final_review_input(extract_text(text), [])
     data = json.loads(messages[1]["content"].split("\n", 1)[1])
-    assert any(c["ruleId"] == rule and c["lineId"] == "f-l1" for c in data["styleCandidates"])
+    assert any(c["ruleId"] == rule and c["lineId"] == "f-l1" and c["quote"] == text.splitlines()[0]
+               for c in data["styleCandidates"])
 
 
-def review(text, rule, example, action="rewrite"):
+def review(text, rule, example, action="rewrite", *, quote=None, line_id="f-l1"):
     doc = extract_text(text)
-    suggestion = SuggestionDTO(location={"lineIds": ["f-l1"], "quote": text},
+    suggestion = SuggestionDTO(location={"lineIds": [line_id], "quote": quote if quote is not None else text},
         kind="가독성", reviewSources=["기본 검토"], materialEvidence=[], reasonAndSuggestion="표현 검토",
         example=example, diagnostic={"category": "writing-style", "ruleId": rule, "action": action})
     return assemble_review_response(doc, AiReviewOutput(results=[suggestion], materialReviews=[]), [])
@@ -39,6 +40,40 @@ def review(text, rule, example, action="rewrite"):
 def test_safe_contraction_preserves_subject_and_tense():
     s = review("팀이 데이터에 대한 분석을 수행했습니다.", "analysis", "팀이 데이터를 분석했습니다.")
     assert s.results[0].diagnostic.action == "rewrite"
+
+
+def test_partial_style_quote_and_rewrite_use_the_original_full_line():
+    text = "팀이 데이터에 대한 분석을 수행했습니다. 이후 결과를 공유했습니다."
+    result = review(text, "analysis", "데이터를 분석했습니다.",
+                    quote="데이터에 대한 분석을 수행했습니다.")
+    assert result.status == "success" and not result.errors
+    assert result.results[0].location.quote == text
+    assert result.results[0].example == "팀이 데이터를 분석했습니다. 이후 결과를 공유했습니다."
+
+
+def test_style_quote_with_different_spacing_preserves_the_original_line():
+    text = "팀의 개선에 기여했습니다."
+    result = review(text, "contribution", "[확인 필요]", action="ask", quote="팀의  개선에 기여했습니다.")
+    assert result.status == "success"
+    assert result.results[0].location.quote == text
+
+
+def test_partial_style_rewrite_cannot_add_facts():
+    result = review("팀이 데이터에 대한 분석을 수행했습니다.", "analysis", "매출을 40% 높였습니다.",
+                    quote="데이터에 대한 분석을 수행했습니다.")
+    assert not result.results
+
+
+@pytest.mark.parametrize("quote,line_id", [
+    ("팀의 개선에 기여했습니다.", "f-l2"),
+    ("매출을 40% 개선했습니다.", "f-l1"),
+    ("팀의 개선", "f-l1"),
+])
+def test_style_quote_must_be_anchored_to_the_candidate(quote, line_id):
+    result = review("팀의 개선에 기여했습니다.", "contribution", "[확인 필요]", action="ask",
+                    quote=quote, line_id=line_id)
+    assert not result.results
+    assert result.errors[0].errorCode == "INVALID_STYLE_REFERENCE"
 
 
 @pytest.mark.parametrize("text,rule,unsafe", [

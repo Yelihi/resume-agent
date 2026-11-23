@@ -173,14 +173,20 @@ def assemble_review_response(
         if suggestion.diagnostic:
             key = (tuple(ids), suggestion.diagnostic.ruleId)
             rules = style_lines.get(ids[0], {}) if len(ids) == 1 else {}
-            if suggestion.diagnostic.ruleId not in rules or suggestion.location.quote != line_text.get(ids[0]):
-                errors.append(_validation_error("INVALID_STYLE_REFERENCE", "문체 후보의 위치를 확인할 수 없습니다."))
+            phrase = rules.get(suggestion.diagnostic.ruleId)
+            original = line_text.get(ids[0], "")
+            quote = _normalized(suggestion.location.quote)
+            normalized_line = _normalized(original)
+            if not phrase or not quote or (
+                quote != normalized_line and (_normalized(phrase) not in quote or normalized_line.count(quote) != 1)
+            ):
+                errors.append(_validation_error("INVALID_STYLE_REFERENCE", "AI가 인용한 문장을 원문과 연결할 수 없어 해당 문체 제안을 제외했습니다."))
                 continue
-            checked = verified_style(suggestion, line_text[ids[0]])
+            checked = verified_style(suggestion, original)
             if checked is None or key in seen_styles:
                 intentional_omissions += 1
                 continue
-            suggestion = checked
+            suggestion = checked.model_copy(update={"location": checked.location.model_copy(update={"quote": original})})
         previous_id = suggestion.previousSuggestionId
         if review_context:
             # Exact matches supplement explicit links; semantic duplicates remain an AI quality check.
