@@ -75,7 +75,8 @@ def style_candidates(document: PageDocument | FlowDocument):
                 if key == "emoji":
                     emoji_count += 1
                 if key not in seen:
-                    candidates.append(dict(ruleId=key, lineId=line.lineId, start=match.start(), end=match.end()))
+                    candidates.append(dict(ruleId=key, lineId=line.lineId, start=match.start(),
+                                           end=match.end(), quote=line.text))
                     seen.add(key)
     return [item for item in candidates if item["ruleId"] != "emoji" or emoji_count > 1]
 
@@ -90,6 +91,13 @@ def verified_style(suggestion: SuggestionDTO, line: str) -> SuggestionDTO | None
     contraction = _CONTRACTIONS.get(diag.ruleId)
     if diag.action == "rewrite" and contraction:
         before, after = contraction
-        if line.count(before) == 1 and suggestion.example == line.replace(before, after):
-            return suggestion
+        if line.count(before) == 1:
+            rewritten = line.replace(before, after)
+            quote = suggestion.location.quote
+            is_exact_excerpt_rewrite = (
+                quote.count(before) == 1 and line.count(quote) == 1
+                and suggestion.example == quote.replace(before, after)
+            )
+            if suggestion.example == rewritten or is_exact_excerpt_rewrite:
+                return suggestion.model_copy(update={"example": rewritten})
     return None
