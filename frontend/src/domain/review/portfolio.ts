@@ -2,7 +2,8 @@ import type { OriginalFile } from "../shared/files";
 
 export type PortfolioVersion = { id: string; contextId: string; name: string; createdAt: string; pageCount: number; original: OriginalFile };
 export type PortfolioFinding = { basis: "text" | "image"; category: "message" | "evidence" | "structure" | "visual";
-  quote: string | null; bbox: { x: number; y: number; width: number; height: number } | null; diagnosis: string; proposedChange: string };
+  quote: string | null; bbox: { x: number; y: number; width: number; height: number } | null; diagnosis: string; proposedChange: string;
+  replacementText?: string | null };
 export type ComparisonSource = { kind: "resume" | "experience"; id: string; version: string; title: string; text: string };
 type EvidenceCitation = { kind: "portfolio" | ComparisonSource["kind"]; id: string; version: string; title: string; quote: string; value: string };
 export type DocumentConflict = { project: string; field: "period" | "metric" | "role"; left: EvidenceCitation; right: EvidenceCitation };
