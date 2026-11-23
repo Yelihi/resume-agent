@@ -18,6 +18,7 @@ from app.document_processing.models import ModuleErrorDTO
 from app.errors import ApiError
 from app.experience.models import InterviewQuestion
 from app.review.openai_gateway import OpenAIReviewGateway, _all_source_urls
+from app.review.prompts import PARAGRAPH_PURPOSE_RULES
 
 router = APIRouter(prefix="/api/experiences")
 logger = logging.getLogger("resume_agent.experience")
@@ -183,7 +184,7 @@ markdown 구조는 '# 소제목', 수행 기간, '## 이력서용 요약', '## �
 문서 전체를 코드 블록으로 감싸지 않는다. 과장된 홍보 문구나 장식적인 이모지를 쓰지 않는다.
 현재 이력서와 중복되거나 관련성이 낮다면 상세 설명에서 추가보다 통합·보관을 제안한다.
 작성안은 이력서에 실제로 반영된 것이 아니다. 원문을 수정했거나 사용자에게 확인받았다고 주장하지 않는다.
-"""
+""" + PARAGRAPH_PURPOSE_RULES
 
 
 DRAFT_COMMON_RULES = """입력 자료와 사용자가 편집한 markdown을 회사·JD와 무관한 한국어 상세 포트폴리오 경험 Markdown으로 정리한다.
@@ -202,11 +203,13 @@ Markdown 이미지는 입력에 제공된 외부 http(s) URL만 사용한다. �
 HTML과 실행 가능한 다이어그램 지시문은 작성하지 않는다. 문서 전체를 코드 블록으로 감싸지 않는다.
 개인정보·API 키·비밀값·회사 기밀은 출력하지 않고 공개 가능한 비식별 표현과 확인 질문을 사용한다.
 결과는 사용자가 수정 가능한 초안이다. 원문을 저장·변경했거나 사용자에게 확인받았다고 주장하지 않는다.
-"""
+""" + PARAGRAPH_PURPOSE_RULES
 
 DRAFT_RULES = DRAFT_COMMON_RULES + """추천 템플릿을 사용한다.
 구조: '# 경험 제목', 수행 기간, '## 문제', '## 분석', '## 해결', '## 기대 결과', '## 실제 결과와 근거', '## 회고'.
 상세한 문제·고민·시도·대안·트레이드오프·해결과정이 드러나도록 작성한다.
+구현·협업의 세부 과정은 해결에 둔다. 실제 결과와 근거에는 배포·관찰·측정과 이를 뒷받침하는 자료를 둔다.
+반환 전에 결과와 회고를 다시 읽고, 실행 과정이 섞였다면 사실을 버리지 말고 해결로 옮긴다.
 빈 항목은 [확인 필요: 항목]으로 남긴다.
 """
 

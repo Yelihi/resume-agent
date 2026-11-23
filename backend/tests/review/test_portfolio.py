@@ -53,6 +53,8 @@ def test_portfolio_returns_a_grounded_rewrite_and_keeps_visual_advice_separate()
     assert results[1].proposedChange == "측정 결과를 확인하세요."
     developer_prompt = parse.call_args.kwargs["input"][0]["content"]
     assert "개인 기여와 팀 기여" in developer_prompt
+    assert "섹션과 문단의 역할" in developer_prompt
+    assert "category=structure" in developer_prompt
     assert "replacementText" in developer_prompt
 
 

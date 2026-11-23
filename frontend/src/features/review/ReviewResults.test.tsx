@@ -51,6 +51,7 @@ it("disables source navigation when the visible resume differs and presents busy
 it("keeps original numbering in the style filter and shows a question instead of a rewrite", async () => {
   const input = props();
   const first = input.suggestions[0];
+  first.content.수정성격 = "구성";
   input.suggestions.push({ ...first, id: "style", content: { ...first.content,
     diagnostic: { category: "writing-style", ruleId: "contribution", action: "ask" },
     "이유 및 제안": "직접 변경한 부분은 무엇인가요?", "실제 수정 예시": "[확인 필요]" } });
@@ -60,6 +61,9 @@ it("keeps original numbering in the style filter and shows a question instead of
   expect(screen.queryByText("[확인 필요]")).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "경력 한 줄 제안 보기" }));
   expect(input.onSelectQuote).toHaveBeenCalledWith(["f-l1"], 2);
+  await userEvent.click(screen.getByRole("button", { name: "내용·근거" }));
+  expect(screen.getByRole("heading", { name: "구성" })).toBeVisible();
+  expect(screen.queryByRole("heading", { name: "문체" })).not.toBeInTheDocument();
 });
 
 it("shows unconfirmed requirements under the pinned posting, outside suggestion cards", () => {

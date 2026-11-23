@@ -8,6 +8,8 @@ def test_final_review_requires_actionable_rewrite() -> None:
 
     assert "원인, 독자에게 미치는 영향, 수정 방향" in prompt
     assert "바로 바꿔 쓸 수 있는 완성 문장" in prompt
+    assert "섹션과 문단의 역할" in prompt
+    assert "수정성격은 구성" in prompt
 
 
 def test_final_review_requires_explicit_reference_source_tags_and_reason() -> None:

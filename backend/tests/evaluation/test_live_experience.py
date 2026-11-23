@@ -69,6 +69,28 @@ BAD_DRAFT = MetadataResult(
 )
 
 
+def test_live_draft_keeps_implementation_details_out_of_results():
+    async def scenario():
+        gateway = OpenAIReviewGateway.from_environment()
+        source = """검색 결과를 좁히기 어려워 필터 기능을 제안했다.
+## 실제 결과와 근거
+필터를 배포한 뒤 사용자가 긍정적으로 반응했다. 만족도 수치나 성능 변화는 측정하지 않았다.
+기획팀과 입력 방식을 협의해 검색 인덱스를 정리했다."""
+        try:
+            async with asyncio.timeout(120):
+                draft = await write(AuthoringInput(title="검색 필터", period="", markdown=source, useTemplate=True), gateway)
+        finally:
+            await gateway.client.close()
+        sections = dict(re.findall(r"^## ([^\n]+)\n([\s\S]*?)(?=^## |\Z)", draft.markdown, flags=re.M))
+        solution = sections["해결"]
+        results = sections["실제 결과와 근거"]
+        assert "인덱스" in solution and "기획팀" in solution
+        assert "배포" in results and "긍정" in results
+        assert "인덱스" not in results and "기획팀" not in results
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("case", CASES)
 def test_live_experience_preparation(case):
     async def scenario():

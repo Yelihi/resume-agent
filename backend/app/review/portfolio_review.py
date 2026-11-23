@@ -127,6 +127,7 @@ async def evaluate_page(gateway, text, image, sources=()):
                 f"{SHARED_REVIEW_PRINCIPLES}"
                 "\n제목의 핵심 메시지, 실제 역할과 검증 근거, 읽는 순서를 확인한다. "
                 "원문 표현의 문제와 읽는 사람에게 미치는 영향을 diagnosis에 쓰고, 구체적인 수정 방향을 proposedChange에 쓴다. "
+                "섹션 주제를 벗어난 내용이나 한 문장에 여러 판단이 이어지는 문제는 category=structure로 보고한다. 옮길 섹션과 남길 내용을 proposedChange에 명시한다. "
                 "문장을 고쳐 해결할 수 있고 인용에 충분한 근거가 있으면 replacementText에 제목·본문·캡션을 바로 바꿔 쓸 문구 하나를 쓴다. "
                 "문장의 주체·행동·성과·수치·단위는 quote에서만 가져온다. 비교 자료는 일관성 확인에만 쓰고 개선 문장으로 옮기지 않는다. "
                 "근거가 부족하면 무엇을 확인할지 proposedChange에 쓰고 replacementText는 null로 둔다. "
