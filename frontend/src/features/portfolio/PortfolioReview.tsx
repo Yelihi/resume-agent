@@ -151,9 +151,16 @@ export function PortfolioReviewScreen({ context, workspace, store, services, dis
             </section>
             <div className="suggestion-list desk-findings">{!!result.findings.length && <h3>페이지 수정 제안</h3>}{result.findings.map((finding, index) => <article key={index}>
               <h4>{categories[finding.category]}</h4>
-              {finding.basis === "text" && finding.quote && <blockquote>{finding.quote}</blockquote>}
+              {finding.basis === "text" && finding.quote && <div>
+                <small className="suggestion-label">원문</small><blockquote>{finding.quote}</blockquote>
+              </div>}
               {finding.basis === "image" && <small>페이지 이미지</small>}
-              <p>{finding.diagnosis}</p><p className="desk-change">{finding.proposedChange}</p>
+              <p>{finding.diagnosis}</p>
+              <div><small className="suggestion-label">수정 방향</small><p>{finding.proposedChange}</p></div>
+              {finding.basis === "text" && finding.replacementText && <div>
+                <small className="suggestion-label">바로 쓸 개선 문장</small>
+                <p className="desk-change">{finding.replacementText}</p>
+              </div>}
             </article>)}</div>
           </Fragment>}
         </section>

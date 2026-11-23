@@ -25,10 +25,16 @@ it("switches page and document history without showing another version's finding
   const result: PortfolioReview = {
     id: "page-one", contextId, portfolioVersionId: "recent", createdAt, pageNumber: 1,
     policyVersion: "portfolio-1", text: "검색 API 운영", textStatus: "complete", imageStatus: "failed",
-    comparisonStatus: "complete", conflicts: [], findings: [],
+    comparisonStatus: "complete", conflicts: [], findings: [{
+      basis: "text", category: "message", quote: "검색 API 운영", bbox: null,
+      diagnosis: "어떤 API인지 구체적으로 드러나지 않습니다.", proposedChange: "제목에 역할을 적으세요.",
+      replacementText: "검색 결과를 제공하는 API를 운영했습니다.",
+    }],
   };
   await store.savePortfolioReview(result);
-  await store.savePortfolioReview({ ...result, id: "page-two", pageNumber: 2, comparisonStatus: "failed" });
+  await store.savePortfolioReview({ ...result, id: "page-two", pageNumber: 2, comparisonStatus: "failed",
+    findings: [{ basis: "text", category: "message", quote: "검색 API 운영", bbox: null,
+      diagnosis: "제목이 모호합니다.", proposedChange: "역할을 확인하세요." }] });
   const reopened = new IndexedDbWorkspaceRepository(databaseName);
   const workspace = await reopened.load();
   render(<MemoryRouter><PortfolioReviewScreen context={workspace.contexts[0]} workspace={workspace}
@@ -39,9 +45,13 @@ it("switches page and document history without showing another version's finding
   const user = userEvent.setup();
   expect(versions).toHaveValue("recent");
   expect(results.getByText("비교한 자료에서 차이를 찾지 못했습니다.")).toBeVisible();
+  expect(results.getByText("바로 쓸 개선 문장")).toBeVisible();
+  expect(results.getByText("검색 결과를 제공하는 API를 운영했습니다.")).toBeVisible();
   await user.click(screen.getByRole("button", { name: "2페이지" }));
   expect(results.getByRole("heading", { name: "2페이지 평가" })).toBeVisible();
   expect(results.getByText("비교를 완료하지 못했습니다.")).toBeVisible();
+  expect(results.getByText("역할을 확인하세요.")).toBeVisible();
+  expect(results.queryByText("바로 쓸 개선 문장")).not.toBeInTheDocument();
   await user.selectOptions(versions, "previous");
   expect(results.getByRole("heading", { name: "1페이지 평가" })).toBeVisible();
   expect(results.getByText("이 페이지의 평가 기록이 없습니다.")).toBeVisible();
