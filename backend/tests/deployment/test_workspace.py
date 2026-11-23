@@ -366,7 +366,14 @@ def test_legacy_snapshot_and_portfolio_import_preserve_separate_versions_and_own
             command("savePortfolioVersion", dict(id=version, contextId=cid, name=version + ".pdf", pageCount=2,
                 createdAt="2026-11-23T00:00:00Z", original=original))
         review = PortfolioReview(id="result", contextId=cid, portfolioVersionId="one", pageNumber=1,
-            createdAt="2026-11-23T00:00:00Z", text="Search 20%", textStatus="complete", imageStatus="failed", findings=[])
+            createdAt="2026-11-23T00:00:00Z", text="Search latency improvement: 20%",
+            textStatus="complete", imageStatus="failed", findings=[
+                dict(basis="text", category="message", quote="Search latency improvement: 20%", bbox=None,
+                     diagnosis="Nominal phrasing", proposedChange="Use a direct verb.",
+                     replacementText="Reduced search latency by 20%."),
+                dict(basis="text", category="evidence", quote="Search latency improvement: 20%", bbox=None,
+                     diagnosis="No baseline", proposedChange="Confirm the baseline."),
+            ])
         repo.commit_portfolio_review("alice", review)
         state = repo.load("alice")["workspace"]
         assert state["portfolioReviews"][0]["portfolioVersionId"] == "one"
@@ -383,7 +390,11 @@ def test_legacy_snapshot_and_portfolio_import_preserve_separate_versions_and_own
         copy = client.post("/api/files", files={"file": ("slides.pdf", b"pdf", "application/pdf")}).json()
         for version in state["portfolioVersions"]:
             version["original"] = copy
+        state["portfolioReviews"][0]["findings"][1].pop("replacementText")
         imported = import_workspace(repo, "bob", ImportRequest(importId="portfolio", workspace=state))
+        assert imported["workspace"]["portfolioReviews"][0]["findings"][0]["replacementText"] == "Reduced search latency by 20%."
+        restored = PortfolioReview.model_validate(imported["workspace"]["portfolioReviews"][0])
+        assert restored.findings[1].replacementText is None
         assert imported["workspace"]["portfolioReviews"] == state["portfolioReviews"]
         command("deleteContext", cid)
         with pytest.raises(HTTPException):

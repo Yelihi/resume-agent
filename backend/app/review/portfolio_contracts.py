@@ -6,6 +6,8 @@ from pydantic import Field, model_validator
 from app.document_processing.models import NormalizedBBox
 from .contracts import ReviewContract
 
+_NUMBER = re.compile(r"[+−-]?\d+(?:[,.]\d+)*(?:[ \t]*[%％])?")
+
 
 def citation_contains_value(quote: str, value: str) -> bool:
     value = " ".join(value.split())
@@ -39,6 +41,17 @@ class PortfolioFinding(ReviewContract):
     bbox: NormalizedBBox | None
     diagnosis: str = Field(min_length=1, max_length=600)
     proposedChange: str = Field(min_length=1, max_length=600)
+    replacementText: str | None = Field(default=None, min_length=1, max_length=600)
+
+    def verified_replacement(self) -> str | None:
+        if self.basis != "text" or not self.quote or self.category == "visual" or not self.replacementText:
+            return None
+        replacement = self.replacementText.strip()
+        if not replacement or " ".join(replacement.split()) == " ".join(self.quote.split()):
+            return None
+        source_numbers = {re.sub(r"\s+", "", number) for number in _NUMBER.findall(self.quote)}
+        replacement_numbers = {re.sub(r"\s+", "", number) for number in _NUMBER.findall(replacement)}
+        return replacement if replacement_numbers <= source_numbers else None
 
 
 class ComparisonSource(ReviewContract):
@@ -121,6 +134,8 @@ class PortfolioReview(ReviewContract):
                         or " ".join(citation.quote.split()) not in " ".join(self.text.split())):
                     raise ValueError("comparison citation is outside the reviewed page")
         for finding in self.findings:
+            if finding.replacementText is not None and finding.verified_replacement() is None:
+                raise ValueError("replacement must be grounded in the quoted text")
             if finding.basis == "text" and (self.textStatus != "complete" or not finding.quote
                     or " ".join(finding.quote.split()) not in " ".join(self.text.split())
                     or finding.category == "visual"):

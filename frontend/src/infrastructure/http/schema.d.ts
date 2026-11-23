@@ -1338,6 +1338,8 @@ export interface components {
             diagnosis: string;
             /** Proposedchange */
             proposedChange: string;
+            /** Replacementtext */
+            replacementText?: string | null;
         };
         /** PortfolioReview */
         PortfolioReview: {
