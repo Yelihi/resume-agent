@@ -32,6 +32,30 @@ def test_vision_failure_retains_verified_text_and_marks_image_as_failed():
     assert asyncio.run(evaluate_page(gateway, "Evidence from page 1", b"image")) == ("complete", "failed", [finding], [])
 
 
+def test_portfolio_returns_a_grounded_rewrite_and_keeps_visual_advice_separate():
+    quote = "팀이 데이터에 대한 분석을 수행했습니다."
+    findings = [
+        PortfolioFinding(category="message", basis="text", quote=quote, bbox=None,
+                         diagnosis="동작이 길게 표현됐습니다.", proposedChange="동사를 간결하게 쓰세요.",
+                         replacementText="팀이 데이터를 분석했습니다."),
+        PortfolioFinding(category="evidence", basis="text", quote=quote, bbox=None,
+                         diagnosis="측정 결과가 없습니다.", proposedChange="측정 결과를 확인하세요.",
+                         replacementText="팀이 분석으로 매출을 40% 높였습니다."),
+        PortfolioFinding(category="visual", basis="image", quote=None, bbox=None,
+                         diagnosis="차트 대비가 낮습니다.", proposedChange="범례 대비를 높이세요.",
+                         replacementText="새로운 차트 제목"),
+    ]
+    parse = AsyncMock(return_value=SimpleNamespace(output_parsed=PortfolioOutput(findings=findings)))
+    gateway = SimpleNamespace(model="test", client=SimpleNamespace(responses=SimpleNamespace(parse=parse)))
+    _, _, results, _ = asyncio.run(evaluate_page(gateway, quote, b"image"))
+
+    assert [finding.replacementText for finding in results] == ["팀이 데이터를 분석했습니다.", None, None]
+    assert results[1].proposedChange == "측정 결과를 확인하세요."
+    developer_prompt = parse.call_args.kwargs["input"][0]["content"]
+    assert "개인 기여와 팀 기여" in developer_prompt
+    assert "replacementText" in developer_prompt
+
+
 def test_consistency_rejects_uncited_values_and_shows_both_versions():
     from app.review.portfolio_contracts import ComparisonSource, ConflictCandidate
     from app.review.portfolio_review import check_conflicts

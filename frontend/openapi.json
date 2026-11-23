@@ -3748,6 +3748,19 @@
             "maxLength": 600,
             "minLength": 1,
             "title": "Proposedchange"
+          },
+          "replacementText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 600,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replacementtext"
           }
         },
         "additionalProperties": false,
