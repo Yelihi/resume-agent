@@ -4,10 +4,12 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from app.review.contracts import POLICY_VERSION
+
 from app.workspace.models import Command
 
 COLLECTIONS = ("contexts", "resumeVersions", "materials", "materialVersions", "contextMaterials",
-               "reviews", "suggestions", "reviewMaterials", "experiences", "experienceDocuments")
+               "reviews", "suggestions", "reviewMaterials", "experiences", "experienceDocuments", "portfolioVersions", "portfolioReviews")
 
 
 def now():
@@ -47,6 +49,16 @@ def file_ids(value):
     return set()
 
 
+def pinned_materials(state, versions):
+    result = []
+    for source_id, version_id in versions.items():
+        version = get(state, "materialVersions", version_id)
+        require(version["materialId"] == source_id, "자료 버전의 연결이 올바르지 않습니다.")
+        url = version.get("legacyUrl")
+        result.append(dict(sourceId=source_id, materialType=version["materialType"], inputType="url" if url else "document", content=None if url else version["content"], url=url))
+    return result
+
+
 class WorkspaceRepository:
     def __init__(self, database=None):
         if database is None:
@@ -60,7 +72,10 @@ class WorkspaceRepository:
 
     def _read(self, connection, owner):
         row = connection.execute("SELECT revision,snapshot FROM workspaces WHERE owner_id=?", (owner,)).fetchone()
-        return (json.loads(row["snapshot"]), row["revision"]) if row else ({key: [] for key in COLLECTIONS}, 0)
+        state = {key: [] for key in COLLECTIONS}
+        if row:
+            state.update(json.loads(row["snapshot"]))
+        return state, row["revision"] if row else 0
 
     def load(self, user_id):
         with self.database.connect() as connection:
@@ -125,7 +140,21 @@ class WorkspaceRepository:
             return {**loaded, "result": result}
         return self._write(user_id, lambda state: self._mutate(state, operation, args))
 
+    def commit_portfolio_review(self, user_id, review):
+        def commit(state):
+            version = get(state, "portfolioVersions", review.portfolioVersionId)
+            require(version["contextId"] == review.contextId and review.pageNumber <= version["pageCount"],
+                    "평가 대상 포트폴리오가 변경되었습니다.")
+            state["portfolioReviews"].append(review.model_dump(mode="json"))
+        return self._write(user_id, commit)
+
     def _mutate(self, state, operation, args):
+        if operation == "savePortfolioVersion":
+            version = args[0]
+            editable(state, version["contextId"])
+            require(not find(state, "portfolioVersions", version["id"]), "이미 등록된 포트폴리오 버전입니다.")
+            state["portfolioVersions"].append(version)
+            return None
         if operation == "createContext":
             name, resume = args
             require(name.strip(), "작업 이름을 입력해 주세요.", 422)
@@ -184,7 +213,7 @@ class WorkspaceRepository:
             editable(state, context_id)
             review_ids = {item["id"] for item in state["reviews"] if item["contextId"] == context_id}
             state["reviewMaterials"] = [item for item in state["reviewMaterials"] if item["reviewId"] not in review_ids]
-            for collection in ("resumeVersions", "reviews", "suggestions", "contextMaterials", "experienceDocuments"):
+            for collection in ("resumeVersions", "reviews", "suggestions", "contextMaterials", "experienceDocuments", "portfolioVersions", "portfolioReviews"):
                 state[collection] = [item for item in state[collection] if item["contextId"] != context_id]
             state["contexts"] = [item for item in state["contexts"] if item["id"] != context_id]
             self._collect_materials(state)
@@ -269,15 +298,6 @@ class WorkspaceRepository:
         ids = {item["materialId"] for item in state["materialVersions"]}
         state["materials"] = [item for item in state["materials"] if not item["deleted"] or item["id"] in ids]
 
-    def _materials(self, state, versions):
-        result = []
-        for source_id, version_id in versions.items():
-            version = get(state, "materialVersions", version_id)
-            require(version["materialId"] == source_id, "자료 버전의 연결이 올바르지 않습니다.")
-            url = version.get("legacyUrl")
-            result.append(dict(sourceId=source_id, materialType=version["materialType"], inputType="url" if url else "document", content=None if url else version["content"], url=url))
-        return result
-
     def _memory(self, state, context, allow_open=False):
         previous = find(state, "reviews", context.get("latestReviewId"))
         active = [item for item in state["suggestions"] if item["id"] in (previous or {}).get("suggestionIds", [])]
@@ -300,7 +320,7 @@ class WorkspaceRepository:
                 material = get(state, "materials", link["materialId"])
                 require(not material["deleted"] and material["currentVersionId"], "자료를 저장해 주세요.")
                 versions[material["id"]] = material["currentVersionId"]
-        materials = self._materials(state, versions)
+        materials = pinned_materials(state, versions)
         has_jd = any(item["materialType"] == "jobPosting" for item in materials)
         experiences = [{key: item[key] for key in ("id", "title", "period", "revision", "markdown", "metadata")}
                        for item in state["experiences"] if has_jd and (item.get("markdown") or "").strip() and (item.get("metadata") or "").strip()]
@@ -316,9 +336,9 @@ class WorkspaceRepository:
     def _restore(self, state, review_id):
         review = get(state, "reviews", review_id)
         resume = get(state, "resumeVersions", review["resumeVersionId"])
-        result = dict(materialReviews=review["materialReviews"], experienceRecommendations=review.get("experienceRecommendations", []), resolutionChecks=review["resolutionChecks"], results=[get(state, "suggestions", identifier)["content"] for identifier in review["resultIds"]])
+        result = dict(requirementAssessments=review.get("requirementAssessments", []), materialReviews=review["materialReviews"], experienceRecommendations=review.get("experienceRecommendations", []), resolutionChecks=review["resolutionChecks"], results=[get(state, "suggestions", identifier)["content"] for identifier in review["resultIds"]])
         context = {**review["input"], "feedback": [{**item, "suggestion": get(state, "suggestions", item["id"])["content"]} for item in review["input"].get("feedback", [])]}
-        return dict(runId=review_id, createdAt=review["createdAt"], document=resume["document"], materials=self._materials(state, context.get("materialVersions", {})), reviewContext=context,
+        return dict(runId=review_id, policyVersion=review.get("policyVersion"), createdAt=review["createdAt"], document=resume["document"], materials=pinned_materials(state, context.get("materialVersions", {})), reviewContext=context,
                     response={**result, "status": review["status"], "errors": review["errors"]}, moduleResults={**review["modules"], "finalReview": dict(moduleKey="finalReview", errors=review["finalErrors"], output=None if review["finalFailed"] else result)})
 
     def _retry(self, state, review_id):
@@ -341,11 +361,11 @@ class WorkspaceRepository:
             resume = get(state, "resumeVersions", context["resumeVersionId"])
             require(resume["contextId"] == context["contextId"], "이력서 연결이 올바르지 않습니다.")
             require(resume["document"] == prepared["document"], "검토 원문이 변경됐습니다.")
-            self._materials(state, context.get("materialVersions", {}))
+            pinned_materials(state, context.get("materialVersions", {}))
             for feedback in context.get("feedback", []):
                 suggestion = get(state, "suggestions", feedback["id"])
                 require(suggestion["contextId"] == context["contextId"] and suggestion["reviewId"] == feedback["reviewId"], "이전 제안 연결이 올바르지 않습니다.")
-            state["activeRun"] = dict(runId=run_id, contextId=context["contextId"], input=refs(context))
+            state["activeRun"] = dict(runId=run_id, policyVersion=POLICY_VERSION, contextId=context["contextId"], input=refs(context))
         return self._write(user_id, register)
 
     def clear_active_run(self, user_id, run_id):
@@ -365,13 +385,13 @@ class WorkspaceRepository:
             if not active:
                 continue
             context = {**active["input"], "feedback": [{**item, "suggestion": get(state, "suggestions", item["id"])["content"]} for item in active["input"].get("feedback", [])]}
-            materials = self._materials(state, context.get("materialVersions", {}))
+            materials = pinned_materials(state, context.get("materialVersions", {}))
             keys = ["spellCheck", "finalReview"]
             for kind, key in (("company", "companyContextAnalysis"), ("jobPosting", "jobPostingAnalysis")):
                 if any(item["materialType"] == kind for item in materials):
                     keys.append(key)
             modules = {key: dict(moduleKey=key, output=None, errors=[dict(moduleKey=key, inputSourceId=None, errorCode="SERVER_RESTARTED", userMessage="서버가 재시작되어 검토가 중단됐습니다. 다시 실행해 주세요.", canRetry=True)]) for key in keys}
-            self.commit_review(owner, dict(runId=active["runId"], createdAt=now(), reviewContext=context,
+            self.commit_review(owner, dict(runId=active["runId"], policyVersion=active.get("policyVersion"), createdAt=now(), reviewContext=context,
                 document=get(state, "resumeVersions", context["resumeVersionId"])["document"], materials=materials,
                 response=dict(status="failed", errors=[error for module in modules.values() for error in module["errors"]], materialReviews=[], results=[]), moduleResults=modules))
             interrupted += 1
@@ -420,7 +440,7 @@ class WorkspaceRepository:
                         old.update(decision="open", verification=check)
                         suggestion_ids.append(old["id"])
             final = record["moduleResults"]["finalReview"]
-            review = dict(id=record["runId"], contextId=context["id"], resumeVersionId=active["input"]["resumeVersionId"], createdAt=record["createdAt"], input=active["input"], status=response["status"], errors=response["errors"], materialReviews=response["materialReviews"], experienceRecommendations=response.get("experienceRecommendations", []), resolutionChecks=checks, resultIds=result_ids, suggestionIds=suggestion_ids if successful else (previous or {}).get("suggestionIds", []), modules={key: value for key, value in record["moduleResults"].items() if key != "finalReview"}, finalErrors=final["errors"], finalFailed=final["output"] is None)
+            review = dict(id=record["runId"], policyVersion=record.get("policyVersion"), contextId=context["id"], resumeVersionId=active["input"]["resumeVersionId"], createdAt=record["createdAt"], input=active["input"], status=response["status"], errors=response["errors"], requirementAssessments=response.get("requirementAssessments", []), materialReviews=response["materialReviews"], experienceRecommendations=response.get("experienceRecommendations", []), resolutionChecks=checks, resultIds=result_ids, suggestionIds=suggestion_ids if successful else (previous or {}).get("suggestionIds", []), modules={key: value for key, value in record["moduleResults"].items() if key != "finalReview"}, finalErrors=final["errors"], finalFailed=final["output"] is None)
             state["reviews"].append(review)
             for version_id in active["input"].get("materialVersions", {}).values():
                 get(state, "materialVersions", version_id)

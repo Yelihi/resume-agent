@@ -45,7 +45,7 @@ def test_flow_start_result_and_sse_contract() -> None:
             events = await client.get(f"/api/reviews/{run_id}/events")
 
             assert result.status_code == 200
-            assert result.json() == {"status": "success", "errors": [], "materialReviews": [], "results": [], "resolutionChecks": [], "experienceRecommendations": []}
+            assert result.json() == {"status": "success", "errors": [], "materialReviews": [], "results": [], "resolutionChecks": [], "experienceRecommendations": [], "requirementAssessments": []}
             assert events.status_code == 200
             assert events.headers["content-type"].startswith("text/event-stream")
             assert "event: spellCheck" in events.text
@@ -214,6 +214,10 @@ def test_saved_record_retries_after_server_restart_and_release_is_safe() -> None
             assert (await client.post("/api/reviews/retry", json={"record": saved, "moduleKey": "finalReview"})).status_code == 409
             restarted.cancel(new_id)
             await restarted.wait(new_id)
+
+            legacy = {k: v for k, v in saved.items() if k != "policyVersion"}
+            stale = await client.post("/api/reviews/retry", json={"record": legacy, "moduleKey": "finalReview"})
+            assert stale.status_code == 409 and "새 검토" in stale.text
 
             saved["moduleResults"]["spellCheck"]["moduleKey"] = "finalReview"
             invalid = await client.post("/api/reviews/retry", json={"record": saved, "moduleKey": "finalReview"})

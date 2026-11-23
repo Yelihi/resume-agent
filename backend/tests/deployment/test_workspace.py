@@ -264,6 +264,7 @@ def test_restart_marks_pending_as_retryable_without_running_ai(tmp_path):
     assert repo.interrupt_pending_runs() == 1
     assert repo.interrupt_pending_runs() == 0
     restored = repo.prepare_retry("alice", "pending")
+    assert restored["policyVersion"] == "career-review-p2"
     assert restored["response"]["status"] == "failed"
     assert restored["response"]["errors"][0]["errorCode"] == "SERVER_RESTARTED"
     from app.review.contracts import ReviewRecord
@@ -282,3 +283,110 @@ def test_experience_source_validation(tmp_path, source):
     with pytest.raises(ValidationError):
         repo.command("alice", "saveExperience", [dict(title="test", period="", sources=[dict(id="source", name="test", text="content", createdAt="2026-09-24", **source)])])
     assert repo.load("alice")["revision"] == 0
+
+
+def test_style_diagnostic_survives_commit_restore_and_import(tmp_path):
+    from app.review.contracts import ReviewRecord
+    from app.review.contracts import POLICY_VERSION
+
+    repo = repository(tmp_path)
+    context = repo.command("alice", "createContext", ["문체", resume()])["result"]
+    prepared = repo.prepare_review("alice", context)
+    repo.register_run("alice", "style-run", prepared)
+    item = {"수정포인트위치": {"lineIds": ["f-l1"], "quote": "hello"}, "수정성격": "가독성",
+            "검토출처": ["기본 검토"], "검토자료근거": [], "이유 및 제안": "역할을 확인합니다.",
+            "실제 수정 예시": "[확인 필요: 근거]", "diagnostic": {"category": "writing-style",
+            "ruleId": "contribution", "action": "ask"}}
+    output = dict(results=[item], materialReviews=[])
+    repo.commit_review("alice", dict(runId="style-run", policyVersion=POLICY_VERSION,
+        createdAt="2026-11-23T00:00:00Z", reviewContext=prepared["reviewContext"],
+        response=dict(status="success", errors=[], **output), moduleResults={
+            "spellCheck": dict(moduleKey="spellCheck", errors=[], output=[]),
+            "finalReview": dict(moduleKey="finalReview", errors=[], output=output)}))
+    snapshot = repo.load("alice")["workspace"]
+    import_workspace(repo, "bob", ImportRequest(importId="style", workspace=snapshot))
+    saved = ReviewRecord.model_validate(repo.command("bob", "restoreRecord", ["style-run"])["result"])
+    assert saved.policyVersion == POLICY_VERSION
+    assert saved.response.results[0].diagnostic.model_dump() == item["diagnostic"]
+
+
+def test_requirement_assessments_keep_original_versions_through_restore_and_import(tmp_path):
+    from app.review.contracts import ReviewRecord
+    repo = repository(tmp_path)
+    command = lambda operation, *args: repo.command("alice", operation, list(args))
+    cid = command("createContext", "지원", resume())["result"]
+    job = dict(title="JD", materialType="jobPosting", content="서비스 운영", source="직접 입력")
+    mid = command("saveMaterial", job)["result"]
+    command("attachMaterial", cid, mid)
+    prepared = repo.prepare_review("alice", cid)
+    repo.register_run("alice", "aligned", prepared)
+    row = dict(sourceId=mid, requirement="서비스 운영", status="unconfirmed",
+               reason="현재 자료에 운영 경험이 없습니다.", resumeEvidence=[], experienceEvidence=[])
+    analysis = dict(summary="운영", evidence=[], requirements=[dict(sourceId=mid, statement="서비스 운영")])
+    output = dict(materialReviews=[], results=[], requirementAssessments=[row])
+    repo.commit_review("alice", dict(runId="aligned", createdAt="2026-11-23T00:00:00Z", reviewContext=prepared["reviewContext"],
+        response=dict(status="success", errors=[], **output), moduleResults={
+            "jobPostingAnalysis": dict(moduleKey="jobPostingAnalysis", output=analysis, errors=[]),
+            "spellCheck": dict(moduleKey="spellCheck", output=[], errors=[]),
+            "finalReview": dict(moduleKey="finalReview", output=output, errors=[])}))
+    old_version = prepared["reviewContext"]["materialVersions"][mid]
+    command("saveMaterial", {**job, "content": "새 요건"}, mid, None, old_version)
+    state = repo.load("alice")["workspace"]
+    forged = deepcopy(state)
+    forged["reviews"][0]["requirementAssessments"][0]["requirement"] = "새 요건"
+    with pytest.raises(HTTPException):
+        import_workspace(repo, "bob", ImportRequest(importId="bad", workspace=forged))
+    import_workspace(repo, "bob", ImportRequest(importId="snapshot", workspace=state))
+    record = ReviewRecord.model_validate(repo.command("bob", "restoreRecord", ["aligned"])["result"])
+    assert record.reviewContext.materialVersions[mid] == old_version
+    assert record.materials[0].content == "서비스 운영"
+    assert record.response.requirementAssessments[0].model_dump() == row
+    assert record.moduleResults.finalReview.output.requirementAssessments == record.response.requirementAssessments
+
+
+def test_legacy_snapshot_and_portfolio_import_preserve_separate_versions_and_owner(tmp_path, monkeypatch):
+    import json
+    from app.review.portfolio_contracts import PortfolioReview
+    repo = repository(tmp_path)
+    command = lambda op, *args: repo.command("alice", op, list(args))["result"]
+    cid = command("createContext", "지원", resume())
+    before = repo.load("alice")["workspace"]
+    legacy = {k: v for k, v in before.items() if not k.startswith("portfolio")}
+    with repo.database.connect() as connection:
+        connection.execute("UPDATE workspaces SET snapshot=? WHERE owner_id='alice'", (json.dumps(legacy),))
+    assert repo.load("alice")["workspace"] == before
+    monkeypatch.setattr(files, "get_database", lambda: repo.database)
+    monkeypatch.setattr(files, "WorkspaceRepository", lambda: repo)
+    app = FastAPI()
+    app.include_router(files.router)
+    app.dependency_overrides[get_current_user] = lambda: User("alice", "alice@test")
+    with TestClient(app) as client:
+        original = client.post("/api/files", files={"file": ("slides.pdf", b"pdf", "application/pdf")}).json()
+        for version in ("one", "two"):
+            command("savePortfolioVersion", dict(id=version, contextId=cid, name=version + ".pdf", pageCount=2,
+                createdAt="2026-11-23T00:00:00Z", original=original))
+        review = PortfolioReview(id="result", contextId=cid, portfolioVersionId="one", pageNumber=1,
+            createdAt="2026-11-23T00:00:00Z", text="Search 20%", textStatus="complete", imageStatus="failed", findings=[])
+        repo.commit_portfolio_review("alice", review)
+        state = repo.load("alice")["workspace"]
+        assert state["portfolioReviews"][0]["portfolioVersionId"] == "one"
+        resume_version = state["contexts"][0]["latestVersionId"]
+        command("addResumeVersion", cid, resume("수정 이력서"), resume_version)
+        state = repo.load("alice")["workspace"]
+        assert state["portfolioReviews"][0]["portfolioVersionId"] == "one"
+        assert {version["id"] for version in state["portfolioVersions"]} == {"one", "two"}
+        with pytest.raises(HTTPException):
+            repo.commit_portfolio_review("bob", review)
+        with pytest.raises(HTTPException):
+            import_workspace(repo, "bob", ImportRequest(importId="foreign", workspace=state))
+        app.dependency_overrides[get_current_user] = lambda: User("bob", "bob@test")
+        copy = client.post("/api/files", files={"file": ("slides.pdf", b"pdf", "application/pdf")}).json()
+        for version in state["portfolioVersions"]:
+            version["original"] = copy
+        imported = import_workspace(repo, "bob", ImportRequest(importId="portfolio", workspace=state))
+        assert imported["workspace"]["portfolioReviews"] == state["portfolioReviews"]
+        command("deleteContext", cid)
+        with pytest.raises(HTTPException):
+            repo.commit_portfolio_review("alice", review)
+        app.dependency_overrides[get_current_user] = lambda: User("alice", "alice@test")
+        assert client.get("/api/files/" + original["fileId"]).status_code == 404

@@ -101,7 +101,7 @@ def test_success_partial_and_failed_share_one_response_contract() -> None:
     ]
     for outcome in (success, partial, failed):
         payload = outcome.response.model_dump(mode="json", by_alias=True)
-        assert set(payload) == {"status", "errors", "materialReviews", "results", "resolutionChecks", "experienceRecommendations"}
+        assert set(payload) == {"status", "errors", "materialReviews", "results", "resolutionChecks", "experienceRecommendations", "requirementAssessments"}
 
 
 def test_ai_output_json_schema_is_strict_at_every_object() -> None:

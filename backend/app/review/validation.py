@@ -6,10 +6,11 @@ from uuid import uuid4
 from app.document_processing.models import FlowDocument, ModuleErrorDTO, PageDocument
 from app.reference_material.models import MaterialType, ReferenceMaterial
 
-from .contracts import AiReviewOutput, ReviewResponse, ReviewStatus, SuggestionDTO, ReviewContext, ResolutionCheck
+from .writing_style import style_candidates, verified_style
+from .contracts import AiReviewOutput, ReviewResponse, ReviewStatus, SuggestionDTO, ReviewContext, ResolutionCheck, ContextEvidence, RequirementAssessment
 
 
-def _lines(document: PageDocument | FlowDocument) -> dict[str, str]:
+def document_lines(document: PageDocument | FlowDocument) -> dict[str, str]:
     if isinstance(document, PageDocument):
         return {
             line.lineId: line.text
@@ -24,6 +25,14 @@ def _normalized(text: str) -> str:
     return re.sub(r"\s+", " ", unicodedata.normalize("NFC", text)).strip()
 
 
+def _same_issue(old: SuggestionDTO, new: SuggestionDTO) -> bool:
+    if _normalized(old.location.quote) != _normalized(new.location.quote):
+        return False
+    if old.diagnostic and new.diagnostic:
+        return old.diagnostic.ruleId == new.diagnostic.ruleId
+    return old.kind == new.kind
+
+
 def _validation_error(code: str, message: str) -> ModuleErrorDTO:
     return ModuleErrorDTO(
         moduleKey="finalReview",
@@ -34,16 +43,62 @@ def _validation_error(code: str, message: str) -> ModuleErrorDTO:
     )
 
 
+def validate_assessments(
+    rows: list[RequirementAssessment], lines: dict[str, str], materials: list[ReferenceMaterial],
+    context: ReviewContext | None, requirements: list[ContextEvidence] | None = None,
+) -> tuple[list[RequirementAssessment], list[ModuleErrorDTO]]:
+    if not rows and not requirements:
+        return [], []
+    jobs = {item.sourceId: item for item in materials if item.materialType == MaterialType.JOB_POSTING}
+    selected = set(context.selectedExperienceIds) if context else set()
+    experiences = {item.id: (item.revision, _normalized(item.markdown))
+                   for item in (context.experiences if context else []) if not selected or item.id in selected}
+    job_text = {key: _normalized(job.content) for key, job in jobs.items() if job.content}
+    catalog = {(item.sourceId, _normalized(item.statement)) for item in requirements or []}
+    seen = set()
+    valid: list[RequirementAssessment] = []
+    errors = []
+    order = {line_id: index for index, line_id in enumerate(lines)}
+    for row in rows:
+        key = (row.sourceId, _normalized(row.requirement))
+        in_catalog = key in catalog
+        anchored = (row.sourceId in jobs and bool(key[1]) and (requirements is None or in_catalog)
+                    and (key[1] in job_text[row.sourceId] if row.sourceId in job_text else in_catalog))
+        has_evidence = bool(row.resumeEvidence or row.experienceEvidence)
+        supported = has_evidence == (row.status != "unconfirmed")
+        for evidence in row.resumeEvidence:
+            ids = evidence.lineIds
+            positions = [order.get(i, -1) for i in ids]
+            quote = _normalized(evidence.quote)
+            supported &= (positions[0] >= 0 and positions == list(range(positions[0], positions[0] + len(ids)))
+                          and ids[0].split("-")[0] == ids[-1].split("-")[0]
+                          and bool(quote) and quote in _normalized(" ".join(lines.get(i, "") for i in ids)))
+        for evidence in row.experienceEvidence:
+            exp = experiences.get(evidence.experienceId)
+            quote = _normalized(evidence.quote)
+            supported &= bool(exp and exp[0] == evidence.revision and quote and quote in exp[1])
+        if not anchored or not supported or key in seen:
+            errors.append(_validation_error("INVALID_REQUIREMENT_ASSESSMENT", "공고 요건이나 연결한 근거를 확인할 수 없는 평가를 제외했습니다."))
+            continue
+        seen.add(key)
+        valid.append(row)
+    if catalog - seen:
+        errors.append(_validation_error("MISSING_REQUIREMENT_ASSESSMENT", "평가하지 못한 공고 요구사항이 있습니다."))
+    return valid, errors
+
+
 def assemble_review_response(
     document: PageDocument | FlowDocument,
     raw: AiReviewOutput,
     module_errors: list[ModuleErrorDTO],
     materials: list[ReferenceMaterial] | None = None,
     review_context: ReviewContext | None = None,
+    requirements: list[ContextEvidence] | None = None,
 ) -> ReviewResponse:
-    line_text = _lines(document)
+    line_text = document_lines(document)
     valid: list[SuggestionDTO] = []
-    errors = list(module_errors)
+    assessments, assessment_errors = validate_assessments(raw.requirementAssessments, line_text, materials or [], review_context, requirements)
+    errors = [*module_errors, *assessment_errors]
     checks: list[ResolutionCheck] = []
     feedback = {item.id: item for item in review_context.feedback} if review_context else {}
     counts = Counter(item.suggestionId for item in raw.resolutionChecks)
@@ -107,13 +162,31 @@ def assemble_review_response(
         seen_sources.add(review.sourceId)
         material_reviews.append(review)
 
+    style_lines: dict[str, dict[str, str]] = {}
+    for candidate in style_candidates(document):
+        line_id = candidate["lineId"]
+        phrase = line_text[line_id][candidate["start"]:candidate["end"]]
+        style_lines.setdefault(line_id, {})[candidate["ruleId"]] = phrase
+    seen_styles = set()
     for suggestion in raw.results:
+        ids = suggestion.location.lineIds
+        if suggestion.diagnostic:
+            key = (tuple(ids), suggestion.diagnostic.ruleId)
+            rules = style_lines.get(ids[0], {}) if len(ids) == 1 else {}
+            if suggestion.diagnostic.ruleId not in rules or suggestion.location.quote != line_text.get(ids[0]):
+                errors.append(_validation_error("INVALID_STYLE_REFERENCE", "문체 후보의 위치를 확인할 수 없습니다."))
+                continue
+            checked = verified_style(suggestion, line_text[ids[0]])
+            if checked is None or key in seen_styles:
+                intentional_omissions += 1
+                continue
+            suggestion = checked
         previous_id = suggestion.previousSuggestionId
         if review_context:
             # Exact matches supplement explicit links; semantic duplicates remain an AI quality check.
             if previous_id is None:
                 previous_id = next((key for key, item in feedback.items()
-                    if item.suggestion.kind == suggestion.kind and _normalized(item.suggestion.location.quote) == _normalized(suggestion.location.quote)), None)
+                    if _same_issue(item.suggestion, suggestion)), None)
             if previous_id and previous_id not in feedback:
                 errors.append(_validation_error("INVALID_SUGGESTION_REFERENCE", "이전 제안 연결을 확인하지 못했습니다."))
                 continue
@@ -147,6 +220,14 @@ def assemble_review_response(
                 )
             )
             continue
+        if not suggestion.diagnostic and suggestion.kind in {"뉘앙스", "가독성"} and any(
+            phrase in suggestion.location.quote
+            for line_id in ids for phrase in style_lines.get(line_id, {}).values()
+        ):
+            intentional_omissions += 1
+            continue
+        if suggestion.diagnostic:
+            seen_styles.add((tuple(ids), suggestion.diagnostic.ruleId))
         valid.append(suggestion.model_copy(update={"id": str(uuid4()), "previousSuggestionId": previous_id}))
 
     if raw.results and not valid and intentional_omissions != len(raw.results):
@@ -155,4 +236,4 @@ def assemble_review_response(
         status = ReviewStatus.PARTIAL
     else:
         status = ReviewStatus.SUCCESS
-    return ReviewResponse(status=status, errors=errors, materialReviews=material_reviews, results=valid, resolutionChecks=checks, experienceRecommendations=recommendations)
+    return ReviewResponse(status=status, errors=errors, materialReviews=material_reviews, results=sorted(valid, key=lambda item: item.diagnostic is not None), resolutionChecks=checks, experienceRecommendations=recommendations, requirementAssessments=assessments)

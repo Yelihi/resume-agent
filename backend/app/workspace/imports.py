@@ -4,11 +4,14 @@ from typing import Annotated, Literal
 from pydantic import Field, HttpUrl
 
 from app.document_processing.models import FlowDocument, ModuleErrorDTO, PageDocument
-from app.review.contracts import (ContextAnalysis, ExperienceRecommendation, MaterialReviewDTO, ModuleResult,
+from app.review.contracts import (ContextAnalysis, RequirementAssessment, ExperienceRecommendation, MaterialReviewDTO, ModuleResult,
                                   ResolutionCheck, ReviewContext, SpellDiagnostic, SuggestionDTO)
+from app.reference_material.models import ReferenceMaterial
+from app.review.portfolio_contracts import PortfolioVersion, PortfolioReview
+from app.review.validation import document_lines, validate_assessments
 from app.workspace.models import (Contract, ExperienceContent, ExperienceDocument, FileReference,
                                   Identifier, MaterialDraft, Text)
-from app.workspace.repository import COLLECTIONS, get, require
+from app.workspace.repository import COLLECTIONS, get, pinned_materials, require
 
 
 class Context(Contract):
@@ -76,6 +79,7 @@ class ReviewModules(Contract):
 
 
 class Review(Contract):
+    policyVersion: str | None = None
     id: Identifier
     contextId: Identifier
     resumeVersionId: Identifier | None
@@ -87,6 +91,7 @@ class Review(Contract):
     resolutionChecks: list[ResolutionCheck]
     resultIds: list[Identifier]
     suggestionIds: list[Identifier]
+    requirementAssessments: list[RequirementAssessment] = Field(default_factory=list)
     experienceRecommendations: list[ExperienceRecommendation] = Field(default_factory=list)
     modules: ReviewModules
     finalErrors: list[ModuleErrorDTO]
@@ -124,6 +129,8 @@ class SavedExperienceDocument(ExperienceDocument):
 
 
 class ImportedWorkspace(Contract):
+    portfolioVersions: list[PortfolioVersion] = Field(default_factory=list, max_length=10000)
+    portfolioReviews: list[PortfolioReview] = Field(default_factory=list, max_length=10000)
     contexts: list[Context] = Field(max_length=1000)
     resumeVersions: list[ResumeVersion] = Field(max_length=10000)
     materials: list[Material] = Field(max_length=10000)
@@ -145,6 +152,30 @@ def validate_relationships(state):
     for collection in COLLECTIONS:
         ids = [item["id"] for item in state[collection]]
         require(len(ids) == len(set(ids)), "이관 자료에 중복 식별자가 있습니다.", 422)
+    for version in state["portfolioVersions"]:
+        get(state, "contexts", version["contextId"])
+    for review in state["portfolioReviews"]:
+        version = get(state, "portfolioVersions", review["portfolioVersionId"])
+        require(version["contextId"] == review["contextId"] and review["pageNumber"] <= version["pageCount"],
+                "포트폴리오 평가의 버전 또는 페이지가 일치하지 않습니다.", 422)
+        for conflict in review.get("conflicts", []):
+            for citation in (conflict["left"], conflict["right"]):
+                quote = " ".join(citation["quote"].split())
+                if citation["kind"] == "resume":
+                    source = get(state, "resumeVersions", citation["id"])
+                    require(source["contextId"] == review["contextId"] and str(source["version"]) == citation["version"]
+                            and source.get("document"), "비교한 이력서 버전이 일치하지 않습니다.", 422)
+                    model = PageDocument if source["documentKind"] == "page" else FlowDocument
+                    text = " ".join(document_lines(model.model_validate(source["document"])).values())
+                    require(quote in " ".join(text.split()), "비교한 이력서 인용이 일치하지 않습니다.", 422)
+                elif citation["kind"] == "experience":
+                    source = get(state, "experiences", citation["id"])
+                    revision = citation["version"]
+                    require(revision.isascii() and revision.isdecimal() and len(revision) < 16
+                            and 1 <= int(revision) <= source["revision"], "비교한 경험 버전이 일치하지 않습니다.", 422)
+                    if int(revision) == source["revision"]:
+                        require(quote in " ".join((source.get("markdown") or "").split()),
+                                "비교한 경험 인용이 일치하지 않습니다.", 422)
     for context in state["contexts"]:
         require(get(state, "resumeVersions", context["latestVersionId"])["contextId"] == context["id"], "이력서의 작업 공간이 일치하지 않습니다.", 422)
         for key in ("latestReviewId", "lastAttemptId"):
@@ -206,7 +237,7 @@ def validate_relationships(state):
             require(get(state, "materials", item["sourceId"])["materialType"] == item["materialType"], "검토 자료 종류가 일치하지 않습니다.", 422)
         for module in review["modules"].values():
             if module and isinstance(module.get("output"), dict):
-                require(all(item["sourceId"] in source_ids for item in module["output"].get("evidence", []) + module["output"].get("materialSummaries", [])), "검토 모듈의 자료 연결이 일치하지 않습니다.", 422)
+                require(all(item["sourceId"] in source_ids for item in module["output"].get("evidence", []) + module["output"].get("materialSummaries", []) + module["output"].get("requirements", [])), "검토 모듈의 자료 연결이 일치하지 않습니다.", 422)
         for item in context.get("feedback", []):
             suggestion = get(state, "suggestions", item["id"])
             require(suggestion["contextId"] == review["contextId"] and suggestion["reviewId"] == item["reviewId"], "피드백 연결이 일치하지 않습니다.", 422)
@@ -216,6 +247,18 @@ def validate_relationships(state):
             require(get(state, "suggestions", identifier)["contextId"] == review["contextId"], "검토 제안 연결이 일치하지 않습니다.", 422)
         for candidate in context.get("experiences", []):
             get(state, "experiences", candidate["id"])
+        if review.get("requirementAssessments"):
+            pinned = get(state, "resumeVersions", context["resumeVersionId"])
+            require(pinned.get("document") is not None, "평가 대상 이력서가 없습니다.", 422)
+            model = PageDocument if pinned["documentKind"] == "page" else FlowDocument
+            lines = document_lines(model.model_validate(pinned["document"]))
+            materials = [ReferenceMaterial.model_validate(item) for item in pinned_materials(state, context["materialVersions"])]
+            analysis = (review["modules"].get("jobPostingAnalysis") or {}).get("output")
+            catalog = ContextAnalysis.model_validate(analysis).requirements if analysis else []
+            rows = [RequirementAssessment.model_validate(item) for item in review["requirementAssessments"]]
+            checked, _ = validate_assessments(rows, lines, materials,
+                ReviewContext.model_validate({**context, "feedback": []}), catalog)
+            require(len(checked) == len(rows), "공고 요구사항 평가와 검토 당시 근거가 일치하지 않습니다.", 422)
         candidate_ids = {item["id"] for item in context.get("experiences", [])}
         for recommendation in review.get("experienceRecommendations", []):
             require(recommendation["experienceId"] in candidate_ids and all(item["sourceId"] in source_ids for item in recommendation["jobEvidence"]), "경험 추천 연결이 일치하지 않습니다.", 422)
@@ -228,6 +271,8 @@ def validate_relationships(state):
 
 def import_workspace(repository, user_id, request: ImportRequest):
     state = request.workspace.model_dump(mode="json", by_alias=True, exclude_unset=True)
+    state.setdefault("portfolioVersions", [])
+    state.setdefault("portfolioReviews", [])
     encoded = json.dumps(state, ensure_ascii=False)
     require(len(encoded.encode()) <= 50 * 1024 * 1024, "이관 자료는 50 MB 이하로 업로드해 주세요.", 413)
     with repository.database.connect() as connection:

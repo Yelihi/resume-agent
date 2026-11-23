@@ -177,3 +177,16 @@ def test_hostile_feedback_cannot_enable_tools():
     assert result.errors == []
     assert client.responses.calls[0]["tools"] == []
     assert client.responses.calls[0]["tool_choice"] == "none"
+
+
+def test_job_catalog_keeps_original_quote_and_routes_bad_extractions_to_material_retry():
+    parsed = ContextAnalysis(summary="JD", evidence=[], requirements=[
+        dict(sourceId="j", statement="필수 요건 - Flask API 운영 경험"),
+        dict(sourceId="j", statement="Oracle 10년"),
+        dict(sourceId="foreign", statement="Flask API 운영 경험")])
+    gateway = OpenAIReviewGateway(fake_client(SimpleNamespace(output_parsed=parsed)), "test")
+    job = ReferenceMaterial(sourceId="j", materialType="jobPosting", inputType="text", content="Flask API 운영 경험")
+    result = asyncio.run(gateway.analyze_materials("jobPostingAnalysis", [job]))
+    assert [r.statement for r in result.output.requirements] == ["Flask API 운영 경험"]
+    assert all(e.moduleKey == "jobPostingAnalysis" and e.canRetry for e in result.errors)
+    assert len(result.errors) == 2

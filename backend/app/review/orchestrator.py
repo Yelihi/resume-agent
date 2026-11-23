@@ -57,7 +57,9 @@ def build_outcome(
             moduleResults=module_results,
         )
     return ReviewOutcome(
-        response=assemble_review_response(document, final.output, errors, materials, review_context),
+        response=assemble_review_response(document, final.output, errors, materials, review_context,
+            requirements=[item for result in preliminary if result.moduleKey == "jobPostingAnalysis" and result.output
+                          for item in result.output.requirements]),
         moduleResults=module_results,
     )
 

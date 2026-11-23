@@ -3,6 +3,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, TypeAdapter, model_validator
 
 from app.document_processing.models import FlowDocument, PageDocument
+from app.review.portfolio_contracts import PortfolioVersion
 from app.experience.models import InterviewQuestion
 
 Identifier = Annotated[str, Field(min_length=1, max_length=120)]
@@ -123,6 +124,7 @@ class Feedback(Contract):
 
 
 ARGUMENTS = {
+    "savePortfolioVersion": tuple[PortfolioVersion],
     "createContext": tuple[Annotated[str, Field(min_length=1, max_length=500)], ResumeInput],
     "addResumeVersion": tuple[Identifier, ResumeInput, Identifier],
     "saveMaterial": tuple[MaterialDraft, Identifier | None, Identifier | None, Identifier | None],

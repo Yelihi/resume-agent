@@ -4,6 +4,7 @@ from typing import Any
 from app.document_processing.models import FlowDocument, PageDocument
 from app.reference_material.models import ReferenceMaterial
 
+from .writing_style import style_candidates
 from .contracts import PreviousReview, ReviewContext
 
 
@@ -89,6 +90,27 @@ def final_review_input(
             for item in (materials or [])
         ],
     }
+    if any(item.materialType == "jobPosting" for item in materials or []):
+        schema_note += """
+공고 분석의 requirements마다 requirementAssessments 한 건을 반환한다. sourceId와 statement 원문을
+sourceId와 requirement로 복사한다. 실제 요구의 행동·수준·기간을 모두 입증하면 matched, 일부면 partial,
+자료에서 확인할 수 없으면 unconfirmed다. 공고 분석이 없거나 요구사항이 없으면 빈 배열이다.
+resumeEvidence는 검토 중인 원문의 연속된 1~3줄과 정확한 인용, experienceEvidence는 입력 경험의
+id(experienceId), revision, markdown 원문 인용이다. metadata·공고 자체·직무명은 경험의 증거가 아니다.
+선택한 경험이 있으면 해당 경험만 근거로 사용한다. 학습과 실무, 팀 성과와 개인 역할을 구별한다.
+unconfirmed에는 두 근거 배열을 비운다. 누락 자체에 임의의 수정 위치를 만들지 않는다.
+reason에는 어떤 조건을 확인했고 무엇이 미확인인지 짧게 설명한다. 평가에는 이력서 문구·배치·경험 선정 의견을 쓰지 않는다. 문구와 선정은 기존 experienceRecommendations에서만 작성한다."""
+    candidates = style_candidates(document)
+    if candidates:
+        payload["styleCandidates"] = candidates
+        schema_note += """
+IMG_7606 문체 후보는 교정 명령이 아니다. 실제 대조·제한, 기술 판정, 감사 기록,
+팀/개인, 학습/실무, 예상/실적, 인용·기술 식별자·OCR 오류는 보존한다. 자연스러우면 생략한다.
+문체 제안은 해당 후보의 줄 전체를 그대로 인용하고 diagnostic={category:writing-style,ruleId,action}을 붙인다.
+rewrite는 원문의 나머지를 그대로 두고 '데이터에 대한 분석을 수행했습니다→데이터를 분석했습니다',
+'중요한 의미를 가집니다→중요합니다', '템플릿을 통해 단축했습니다→템플릿으로 줄였습니다'만 허용한다.
+contribution, experience, praise에서 개인 행동·경험·근거가 빠지면 ask로 질문한다.
+다른 후보도 문맥을 읽고 모호한 점이 명확할 때만 ask로 확인한다. 의미가 분명한 표현은 그대로 둔다. 일반 제안은 diagnostic=null이다."""
     if previous_review:
         payload["previousReviewReference"] = {
             "suggestions": [
@@ -123,9 +145,9 @@ def final_review_input(
 
 def material_analysis_input(module_key: str, materials: list[ReferenceMaterial]) -> list[dict[str, str]]:
     purpose = (
-        "회사의 실제 특징과 이력서에서 연결할 수 있는 근거를 요약한다."
+        "회사의 실제 특징과 이력서에서 연결할 수 있는 근거를 요약한다. requirements는 빈 배열이다."
         if module_key == "companyContextAnalysis"
-        else "채용 공고의 실제 요구사항과 검증 가능한 연결 근거를 요약한다."
+        else "채용 공고의 실제 요구사항과 검증 가능한 연결 근거를 요약한다. requirements에는 명시된 필수·우대 요구 각각을 sourceId와 연속된 짧은 원문 인용(statement)으로 한 번씩 추출한다. 각 statement에는 해당 항목 본문만 그대로 복사한다. 목록 기호나 다른 줄의 ‘필수 요건’·‘우대’ 헤더를 붙이지 않는다. 자격 요건을 추론하거나 의역하지 않는다."
     )
     payload = [material.model_dump(mode="json", exclude_none=True) for material in materials]
     return [

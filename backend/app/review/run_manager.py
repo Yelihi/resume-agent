@@ -8,12 +8,14 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict
 
+from app.errors import ReviewExecutionError
 from app.deployment.auth import User
 from app.deployment.jobs import watch_user
 
 from app.document_processing.models import FlowDocument, ModuleErrorDTO, PageDocument
 from app.reference_material.models import MaterialType, ReferenceMaterial
 
+from .contracts import POLICY_VERSION
 from .contracts import ModuleResult, PreviousReview, ReviewResponse, ReviewStatus, ReviewRecord, CompletedModules, ReviewContext
 from .orchestrator import ReviewGateway, ReviewOrchestrator, build_outcome
 from .spell_check import check_spelling
@@ -35,6 +37,7 @@ class ReviewRun:
     runId: str
     document: PageDocument | FlowDocument
     materials: list[ReferenceMaterial]
+    policyVersion: str = POLICY_VERSION
     ownerId: str | None = None
     ownerUser: User | None = None
     gateway: ReviewGateway | None = None
@@ -106,7 +109,7 @@ class ReviewRunManager:
         if run.response is None or run.response.status is ReviewStatus.CANCELLED:
             raise RuntimeError("no completed review record")
         return ReviewRecord(
-            runId=run.runId, createdAt=run.createdAt,
+            runId=run.runId, policyVersion=run.policyVersion, createdAt=run.createdAt,
             document=run.document, materials=run.materials,
             previousReview=run.previousReview, reviewContext=run.reviewContext,
             moduleResults=CompletedModules.model_validate({
@@ -119,6 +122,8 @@ class ReviewRunManager:
                       owner_id: str | None = None, owner_user: User | None = None, gateway: ReviewGateway | None = None,
                       finish: Callable[[ReviewRun], Awaitable[None]] | None = None) -> str:
         self._ensure_idle()
+        if record.policyVersion != POLICY_VERSION:
+            raise ReviewExecutionError(409, "REVIEW_POLICY_CHANGED", "저장된 검토 정책을 사용할 수 없습니다. 새 검토를 시작해 주세요.")
         modules = {
             key: result for key in type(record.moduleResults).model_fields
             if (result := getattr(record.moduleResults, key)) is not None
