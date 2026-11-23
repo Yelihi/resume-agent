@@ -144,6 +144,8 @@ def test_draft_verifies_sources_and_metadata_uses_edited_markdown():
                                        talkingPoint=None, interviewQuestions=[])
                                        if kwargs["text_format"] is MetadataReview else result)
             assert kwargs["input"][0]["content"] == DRAFT_RULES
+            assert "섹션과 문단의 역할" in kwargs["input"][0]["content"]
+            assert "구현·협업의 세부 과정은 해결에 둔다" in kwargs["input"][0]["content"]
             assert "직접 작성한 역할" in body["input"]["markdown"]
             assert "resume" not in body["input"]
             assert body["sourceNotes"] == [{"sourceId": "link", "text": "검색 조건 URL 저장", "verified": True, "failureReason": None}]

@@ -160,3 +160,17 @@ def test_duplicate_contraction_has_one_card():
     response = assemble_review_response(extract_text(text), output, [])
     assert response.status == "success" and len(response.results) == 1
     assert response.results[0].diagnostic.ruleId == "analysis"
+
+
+def test_result_section_structure_finding_is_retained_alongside_style_candidates():
+    quote = "기획·서버팀과 조작 방식을 조정해 사용자 경험 개선에 기여했습니다."
+    document = extract_text(f"실제 결과\n임의 위치 기능을 배포했고 사용자 반응이 긍정적이었습니다.\n{quote}")
+    suggestion = SuggestionDTO(
+        location={"lineIds": ["f-l3"], "quote": quote}, kind="구성",
+        reviewSources=["기본 검토"], materialEvidence=[],
+        reasonAndSuggestion="성과 문단을 끊는 협업 과정입니다. 조작 방식을 조정한 사실을 해결 항목으로 옮기세요.",
+        example="기획·서버팀과 조작 방식을 조정했습니다.",
+    )
+    result = assemble_review_response(document, AiReviewOutput(results=[suggestion], materialReviews=[]), [])
+    assert result.status == "success"
+    assert [item.kind for item in result.results] == ["구성"]
