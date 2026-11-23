@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -99,7 +100,23 @@ class OpenAIReviewGateway:
                         for source_id, _ in missing
                     ]
                     return ModuleResult(moduleKey=module_key, output=None, errors=errors)
-            return ModuleResult(moduleKey=module_key, output=parsed, errors=[])
+            # Keep the requirement catalog replayable against the pinned material text.
+            sources = {item.sourceId: item for item in materials}
+            requirements = []
+            errors = []
+            for item in parsed.requirements:
+                source = sources.get(item.sourceId)
+                quote = " ".join(item.statement.split())
+                if source and source.content and quote not in " ".join(source.content.split()):
+                    quote = re.sub(r"^(?:필수|우대)(?:\s*(?:요건|조건|사항))?\s*[:：–—-]\s*", "", quote)
+                if (module_key != "jobPostingAnalysis" or not source or not quote
+                        or (source.content and quote not in " ".join(source.content.split()))):
+                    errors.append(_error(module_key, "INVALID_REQUIREMENT_QUOTE", "공고 요구사항의 원문 인용을 확인하지 못했습니다."))
+                    continue
+                requirement = item.model_copy(update={"statement": quote})
+                if requirement not in requirements:
+                    requirements.append(requirement)
+            return ModuleResult(moduleKey=module_key, output=parsed.model_copy(update={"requirements": requirements}), errors=errors)
         except Exception:
             logger.warning("Material analysis failed for %s", module_key)
             return ModuleResult(

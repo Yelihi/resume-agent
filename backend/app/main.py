@@ -12,6 +12,7 @@ from app.document_processing.models import ErrorResponse, ModuleErrorDTO
 from app.errors import ApplicationError
 from app.reference_material.api import router as material_router
 from app.resume.api import router
+from app.review.portfolio_review import router as portfolio_router
 from app.review.api import router as review_router
 from app.experience.api import router as experience_router
 from app.deployment.auth import enforce_same_origin, get_current_user
@@ -38,7 +39,7 @@ async def lifespan(_: FastAPI):
         await get_run_manager().shutdown()
 
 app = FastAPI(title="Resume Agent API", lifespan=lifespan)
-for api_router in (router, review_router, material_router, experience_router, account_router, workspace_router, files_router, operations_router):
+for api_router in (router, review_router, portfolio_router, material_router, experience_router, account_router, workspace_router, files_router, operations_router):
     app.include_router(api_router, dependencies=[Depends(enforce_same_origin), Depends(require_api_user)])
 logger = logging.getLogger("resume_agent")
 

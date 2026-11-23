@@ -259,6 +259,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/portfolio/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inspect Pdf */
+        post: operations["inspect_pdf_api_portfolio_inspect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portfolio/versions/{version_id}/pages/{page_number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Page */
+        post: operations["review_page_api_portfolio_versions__version_id__pages__page_number__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/materials/preview": {
         parameters: {
             query?: never;
@@ -520,6 +554,8 @@ export interface components {
         };
         /** AiReviewOutput */
         AiReviewOutput: {
+            /** Requirementassessments */
+            requirementAssessments?: components["schemas"]["RequirementAssessment"][];
             /** Experiencerecommendations */
             experienceRecommendations?: components["schemas"]["ExperienceRecommendation"][];
             /** Resolutionchecks */
@@ -567,10 +603,27 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_inspect_pdf_api_portfolio_inspect_post */
+        Body_inspect_pdf_api_portfolio_inspect_post: {
+            /** File */
+            file: string;
+        };
         /** Body_pdf_api_resumes_extract_pdf_post */
         Body_pdf_api_resumes_extract_pdf_post: {
             /** File */
             file: string;
+        };
+        /** Body_review_page_api_portfolio_versions__version_id__pages__page_number__post */
+        Body_review_page_api_portfolio_versions__version_id__pages__page_number__post: {
+            /** Contextid */
+            contextId: string;
+            /** File */
+            file?: string | null;
+            /**
+             * Comparison
+             * @default {}
+             */
+            comparison: string;
         };
         /** Body_txt_api_resumes_extract_txt_post */
         Body_txt_api_resumes_extract_txt_post: {
@@ -589,13 +642,28 @@ export interface components {
             /** Cancelrequested */
             cancelRequested: boolean;
         };
+        /** CareerDiagnostic */
+        CareerDiagnostic: {
+            /**
+             * Category
+             * @constant
+             */
+            category: "writing-style";
+            /** Ruleid */
+            ruleId: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "rewrite" | "ask";
+        };
         /** Command */
         Command: {
             /**
              * Operation
              * @enum {string}
              */
-            operation: "createContext" | "addResumeVersion" | "saveMaterial" | "attachMaterial" | "detachMaterial" | "deleteMaterial" | "deleteContext" | "saveExperience" | "saveExperienceDocument" | "deleteExperienceDocument" | "setSuggestionFeedback" | "saveReviewFeedback" | "setContextExperiences" | "prepareReview" | "prepareRetry" | "restoreRecord" | "clearActiveRun" | "registerRun" | "completeReview";
+            operation: "savePortfolioVersion" | "createContext" | "addResumeVersion" | "saveMaterial" | "attachMaterial" | "detachMaterial" | "deleteMaterial" | "deleteContext" | "saveExperience" | "saveExperienceDocument" | "deleteExperienceDocument" | "setSuggestionFeedback" | "saveReviewFeedback" | "setContextExperiences" | "prepareReview" | "prepareRetry" | "restoreRecord" | "clearActiveRun" | "registerRun" | "completeReview";
             /** Args */
             args: unknown[];
         };
@@ -627,6 +695,8 @@ export interface components {
         };
         /** ContextAnalysis */
         ContextAnalysis: {
+            /** Requirements */
+            requirements?: components["schemas"]["ContextEvidence"][];
             /** Summary */
             summary: string;
             /** Evidence */
@@ -678,12 +748,42 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** DocumentConflict */
+        DocumentConflict: {
+            /** Project */
+            project: string;
+            /**
+             * Field
+             * @enum {string}
+             */
+            field: "period" | "metric" | "role";
+            left: components["schemas"]["EvidenceCitation"];
+            right: components["schemas"]["EvidenceCitation"];
+        };
         /** DocumentPage */
         DocumentPage: {
             /** Pagenumber */
             pageNumber: number;
             /** Blocks */
             blocks: components["schemas"]["PageBlock"][];
+        };
+        /** EvidenceCitation */
+        EvidenceCitation: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "portfolio" | "resume" | "experience";
+            /** Id */
+            id: string;
+            /** Version */
+            version: string;
+            /** Title */
+            title: string;
+            /** Quote */
+            quote: string;
+            /** Value */
+            value: string;
         };
         /** Experience */
         Experience: {
@@ -750,6 +850,15 @@ export interface components {
              * @default
              */
             metadata: string;
+        };
+        /** ExperienceQuote */
+        ExperienceQuote: {
+            /** Experienceid */
+            experienceId: string;
+            /** Revision */
+            revision: number;
+            /** Quote */
+            quote: string;
         };
         /** ExperienceRecommendation */
         ExperienceRecommendation: {
@@ -940,6 +1049,10 @@ export interface components {
         };
         /** ImportedWorkspace */
         ImportedWorkspace: {
+            /** Portfolioversions */
+            portfolioVersions?: components["schemas"]["PortfolioVersion"][];
+            /** Portfolioreviews */
+            portfolioReviews?: components["schemas"]["PortfolioReview"][];
             /** Contexts */
             contexts: components["schemas"]["Context"][];
             /** Resumeversions */
@@ -1201,6 +1314,86 @@ export interface components {
             previousReview?: components["schemas"]["PreviousReview"] | null;
             reviewContext?: components["schemas"]["ReviewContext"] | null;
         };
+        /** PortfolioFile */
+        PortfolioFile: {
+            /** Fileid */
+            fileId: string;
+        };
+        /** PortfolioFinding */
+        PortfolioFinding: {
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "text" | "image";
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "message" | "evidence" | "structure" | "visual";
+            /** Quote */
+            quote: string | null;
+            bbox: components["schemas"]["NormalizedBBox"] | null;
+            /** Diagnosis */
+            diagnosis: string;
+            /** Proposedchange */
+            proposedChange: string;
+        };
+        /** PortfolioReview */
+        PortfolioReview: {
+            /** Id */
+            id: string;
+            /** Contextid */
+            contextId: string;
+            /** Portfolioversionid */
+            portfolioVersionId: string;
+            /** Pagenumber */
+            pageNumber: number;
+            /**
+             * Policyversion
+             * @default portfolio-1
+             * @constant
+             */
+            policyVersion: "portfolio-1";
+            /** Createdat */
+            createdAt: string;
+            /** Text */
+            text: string;
+            /**
+             * Textstatus
+             * @enum {string}
+             */
+            textStatus: "complete" | "unavailable" | "failed";
+            /**
+             * Imagestatus
+             * @enum {string}
+             */
+            imageStatus: "complete" | "failed";
+            /**
+             * Comparisonstatus
+             * @default unavailable
+             * @enum {string}
+             */
+            comparisonStatus: "complete" | "unavailable" | "failed";
+            /** Conflicts */
+            conflicts?: components["schemas"]["DocumentConflict"][];
+            /** Findings */
+            findings: components["schemas"]["PortfolioFinding"][];
+        };
+        /** PortfolioVersion */
+        PortfolioVersion: {
+            /** Id */
+            id: string;
+            /** Contextid */
+            contextId: string;
+            /** Name */
+            name: string;
+            /** Createdat */
+            createdAt: string;
+            /** Pagecount */
+            pageCount: number;
+            original: components["schemas"]["PortfolioFile"];
+        };
         /** PreviousReview */
         PreviousReview: {
             /** Results */
@@ -1222,6 +1415,24 @@ export interface components {
             content?: string | null;
             /** Url */
             url?: string | null;
+        };
+        /** RequirementAssessment */
+        RequirementAssessment: {
+            /** Sourceid */
+            sourceId: string;
+            /** Requirement */
+            requirement: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "matched" | "partial" | "unconfirmed";
+            /** Reason */
+            reason: string;
+            /** Resumeevidence */
+            resumeEvidence: components["schemas"]["SuggestionLocation"][];
+            /** Experienceevidence */
+            experienceEvidence: components["schemas"]["ExperienceQuote"][];
         };
         /** ResolutionCheck */
         ResolutionCheck: {
@@ -1297,6 +1508,8 @@ export interface components {
         };
         /** Review */
         Review: {
+            /** Policyversion */
+            policyVersion?: string | null;
             /** Id */
             id: string;
             /** Contextid */
@@ -1321,6 +1534,8 @@ export interface components {
             resultIds: string[];
             /** Suggestionids */
             suggestionIds: string[];
+            /** Requirementassessments */
+            requirementAssessments?: components["schemas"]["RequirementAssessment"][];
             /** Experiencerecommendations */
             experienceRecommendations?: components["schemas"]["ExperienceRecommendation"][];
             modules: components["schemas"]["ReviewModules"];
@@ -1372,6 +1587,8 @@ export interface components {
          * @description JSON record shared by storage and retry; contains no runtime objects.
          */
         ReviewRecord: {
+            /** Policyversion */
+            policyVersion?: string | null;
             /** Runid */
             runId: string;
             reviewContext?: components["schemas"]["ReviewContext"] | null;
@@ -1390,6 +1607,8 @@ export interface components {
         };
         /** ReviewResponse */
         ReviewResponse: {
+            /** Requirementassessments */
+            requirementAssessments?: components["schemas"]["RequirementAssessment"][];
             /** Experiencerecommendations */
             experienceRecommendations?: components["schemas"]["ExperienceRecommendation"][];
             /** Resolutionchecks */
@@ -1502,6 +1721,7 @@ export interface components {
         SuggestionDTO: {
             /** Id */
             id?: string | null;
+            diagnostic?: components["schemas"]["CareerDiagnostic"] | null;
             /** Previoussuggestionid */
             previousSuggestionId?: string | null;
             "\uC218\uC815\uD3EC\uC778\uD2B8\uC704\uCE58": components["schemas"]["SuggestionLocation"];
@@ -2091,6 +2311,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inspect_pdf_api_portfolio_inspect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_inspect_pdf_api_portfolio_inspect_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_page_api_portfolio_versions__version_id__pages__page_number__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+                page_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_review_page_api_portfolio_versions__version_id__pages__page_number__post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioReview"];
+                };
             };
             /** @description Validation Error */
             422: {

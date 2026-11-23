@@ -562,6 +562,106 @@
         }
       }
     },
+    "/api/portfolio/inspect": {
+      "post": {
+        "summary": "Inspect Pdf",
+        "operationId": "inspect_pdf_api_portfolio_inspect_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_inspect_pdf_api_portfolio_inspect_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Inspect Pdf Api Portfolio Inspect Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolio/versions/{version_id}/pages/{page_number}": {
+      "post": {
+        "summary": "Review Page",
+        "operationId": "review_page_api_portfolio_versions__version_id__pages__page_number__post",
+        "parameters": [
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version Id"
+            }
+          },
+          {
+            "name": "page_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Page Number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_review_page_api_portfolio_versions__version_id__pages__page_number__post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioReview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/materials/preview": {
       "post": {
         "summary": "Preview",
@@ -1112,6 +1212,13 @@
       },
       "AiReviewOutput": {
         "properties": {
+          "requirementAssessments": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementAssessment"
+            },
+            "type": "array",
+            "title": "Requirementassessments"
+          },
           "experienceRecommendations": {
             "items": {
               "$ref": "#/components/schemas/ExperienceRecommendation"
@@ -1268,6 +1375,20 @@
         ],
         "title": "Body_image_api_resumes_extract_image_post"
       },
+      "Body_inspect_pdf_api_portfolio_inspect_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_inspect_pdf_api_portfolio_inspect_post"
+      },
       "Body_pdf_api_resumes_extract_pdf_post": {
         "properties": {
           "file": {
@@ -1281,6 +1402,36 @@
           "file"
         ],
         "title": "Body_pdf_api_resumes_extract_pdf_post"
+      },
+      "Body_review_page_api_portfolio_versions__version_id__pages__page_number__post": {
+        "properties": {
+          "contextId": {
+            "type": "string",
+            "title": "Contextid"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "comparison": {
+            "type": "string",
+            "title": "Comparison",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contextId"
+        ],
+        "title": "Body_review_page_api_portfolio_versions__version_id__pages__page_number__post"
       },
       "Body_txt_api_resumes_extract_txt_post": {
         "properties": {
@@ -1329,11 +1480,43 @@
         ],
         "title": "CancelAccepted"
       },
+      "CareerDiagnostic": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "const": "writing-style",
+            "title": "Category"
+          },
+          "ruleId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Ruleid"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "rewrite",
+              "ask"
+            ],
+            "title": "Action"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "category",
+          "ruleId",
+          "action"
+        ],
+        "title": "CareerDiagnostic"
+      },
       "Command": {
         "properties": {
           "operation": {
             "type": "string",
             "enum": [
+              "savePortfolioVersion",
               "createContext",
               "addResumeVersion",
               "saveMaterial",
@@ -1488,6 +1671,13 @@
       },
       "ContextAnalysis": {
         "properties": {
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/ContextEvidence"
+            },
+            "type": "array",
+            "title": "Requirements"
+          },
           "summary": {
             "type": "string",
             "minLength": 1,
@@ -1661,6 +1851,40 @@
         ],
         "title": "DirectTextRequest"
       },
+      "DocumentConflict": {
+        "properties": {
+          "project": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Project"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "period",
+              "metric",
+              "role"
+            ],
+            "title": "Field"
+          },
+          "left": {
+            "$ref": "#/components/schemas/EvidenceCitation"
+          },
+          "right": {
+            "$ref": "#/components/schemas/EvidenceCitation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "project",
+          "field",
+          "left",
+          "right"
+        ],
+        "title": "DocumentConflict"
+      },
       "DocumentPage": {
         "properties": {
           "pageNumber": {
@@ -1684,6 +1908,55 @@
           "blocks"
         ],
         "title": "DocumentPage"
+      },
+      "EvidenceCitation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "portfolio",
+              "resume",
+              "experience"
+            ],
+            "title": "Kind"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Title"
+          },
+          "quote": {
+            "type": "string",
+            "maxLength": 800,
+            "minLength": 1,
+            "title": "Quote"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "version",
+          "title",
+          "quote",
+          "value"
+        ],
+        "title": "EvidenceCitation"
       },
       "Experience": {
         "properties": {
@@ -1879,6 +2152,33 @@
           "revision"
         ],
         "title": "ExperienceInput"
+      },
+      "ExperienceQuote": {
+        "properties": {
+          "experienceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Experienceid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Revision"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Quote"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "experienceId",
+          "revision",
+          "quote"
+        ],
+        "title": "ExperienceQuote"
       },
       "ExperienceRecommendation": {
         "properties": {
@@ -2486,6 +2786,22 @@
       },
       "ImportedWorkspace": {
         "properties": {
+          "portfolioVersions": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioVersion"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Portfolioversions"
+          },
+          "portfolioReviews": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioReview"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Portfolioreviews"
+          },
           "contexts": {
             "items": {
               "$ref": "#/components/schemas/Context"
@@ -3366,6 +3682,222 @@
         ],
         "title": "PageReviewRequest"
       },
+      "PortfolioFile": {
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "title": "Fileid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "fileId"
+        ],
+        "title": "PortfolioFile"
+      },
+      "PortfolioFinding": {
+        "properties": {
+          "basis": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image"
+            ],
+            "title": "Basis"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "message",
+              "evidence",
+              "structure",
+              "visual"
+            ],
+            "title": "Category"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "bbox": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NormalizedBBox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "diagnosis": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Diagnosis"
+          },
+          "proposedChange": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Proposedchange"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "basis",
+          "category",
+          "quote",
+          "bbox",
+          "diagnosis",
+          "proposedChange"
+        ],
+        "title": "PortfolioFinding"
+      },
+      "PortfolioReview": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "contextId": {
+            "type": "string",
+            "title": "Contextid"
+          },
+          "portfolioVersionId": {
+            "type": "string",
+            "title": "Portfolioversionid"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Pagenumber"
+          },
+          "policyVersion": {
+            "type": "string",
+            "const": "portfolio-1",
+            "title": "Policyversion",
+            "default": "portfolio-1"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 24000,
+            "title": "Text"
+          },
+          "textStatus": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "unavailable",
+              "failed"
+            ],
+            "title": "Textstatus"
+          },
+          "imageStatus": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "failed"
+            ],
+            "title": "Imagestatus"
+          },
+          "comparisonStatus": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "unavailable",
+              "failed"
+            ],
+            "title": "Comparisonstatus",
+            "default": "unavailable"
+          },
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentConflict"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Conflicts"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioFinding"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Findings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "contextId",
+          "portfolioVersionId",
+          "pageNumber",
+          "createdAt",
+          "text",
+          "textStatus",
+          "imageStatus",
+          "findings"
+        ],
+        "title": "PortfolioReview"
+      },
+      "PortfolioVersion": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "contextId": {
+            "type": "string",
+            "title": "Contextid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat"
+          },
+          "pageCount": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Pagecount"
+          },
+          "original": {
+            "$ref": "#/components/schemas/PortfolioFile"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "contextId",
+          "name",
+          "createdAt",
+          "pageCount",
+          "original"
+        ],
+        "title": "PortfolioVersion"
+      },
       "PreviousReview": {
         "properties": {
           "results": {
@@ -3449,6 +3981,60 @@
           "inputType"
         ],
         "title": "ReferenceMaterial"
+      },
+      "RequirementAssessment": {
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Sourceid"
+          },
+          "requirement": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Requirement"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "matched",
+              "partial",
+              "unconfirmed"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "resumeEvidence": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionLocation"
+            },
+            "type": "array",
+            "title": "Resumeevidence"
+          },
+          "experienceEvidence": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienceQuote"
+            },
+            "type": "array",
+            "title": "Experienceevidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sourceId",
+          "requirement",
+          "status",
+          "reason",
+          "resumeEvidence",
+          "experienceEvidence"
+        ],
+        "title": "RequirementAssessment"
       },
       "ResolutionCheck": {
         "properties": {
@@ -3685,6 +4271,17 @@
       },
       "Review": {
         "properties": {
+          "policyVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policyversion"
+          },
           "id": {
             "type": "string",
             "maxLength": 120,
@@ -3766,6 +4363,13 @@
             },
             "type": "array",
             "title": "Suggestionids"
+          },
+          "requirementAssessments": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementAssessment"
+            },
+            "type": "array",
+            "title": "Requirementassessments"
           },
           "experienceRecommendations": {
             "items": {
@@ -3955,6 +4559,17 @@
       },
       "ReviewRecord": {
         "properties": {
+          "policyVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policyversion"
+          },
           "runId": {
             "type": "string",
             "minLength": 1,
@@ -4025,6 +4640,13 @@
       },
       "ReviewResponse": {
         "properties": {
+          "requirementAssessments": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementAssessment"
+            },
+            "type": "array",
+            "title": "Requirementassessments"
+          },
           "experienceRecommendations": {
             "items": {
               "$ref": "#/components/schemas/ExperienceRecommendation"
@@ -4402,6 +5024,16 @@
               }
             ],
             "title": "Id"
+          },
+          "diagnostic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CareerDiagnostic"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "previousSuggestionId": {
             "anyOf": [

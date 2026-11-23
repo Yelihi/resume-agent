@@ -7,6 +7,9 @@ from app.document_processing.models import FlowDocument, ModuleErrorDTO, PageDoc
 from app.reference_material.models import MaterialType, ReferenceMaterial
 
 
+POLICY_VERSION = "career-review-p2"
+
+
 class ReviewContract(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -42,8 +45,15 @@ class MaterialReviewDTO(ReviewContract):
     reason: str = Field(min_length=1)
 
 
+class CareerDiagnostic(ReviewContract):
+    category: Literal["writing-style"]
+    ruleId: str = Field(min_length=1, max_length=64)
+    action: Literal["rewrite", "ask"]
+
+
 class SuggestionDTO(ReviewContract):
     id: str | None = None
+    diagnostic: CareerDiagnostic | None = None
     previousSuggestionId: str | None = None
     location: SuggestionLocation = Field(alias="수정포인트위치")
     kind: SuggestionKind = Field(alias="수정성격")
@@ -138,7 +148,23 @@ class ReviewContext(ReviewContract):
         return self
 
 
+class ExperienceQuote(ReviewContract):
+    experienceId: str = Field(min_length=1)
+    revision: int = Field(ge=1)
+    quote: str = Field(min_length=1)
+
+
+class RequirementAssessment(ReviewContract):
+    sourceId: str = Field(min_length=1)
+    requirement: str = Field(min_length=1)
+    status: Literal["matched", "partial", "unconfirmed"]
+    reason: str = Field(min_length=1, max_length=400)
+    resumeEvidence: list[SuggestionLocation]
+    experienceEvidence: list[ExperienceQuote]
+
+
 class AiReviewOutput(ReviewContract):
+    requirementAssessments: list[RequirementAssessment] = Field(default_factory=list)
     experienceRecommendations: list[ExperienceRecommendation] = Field(default_factory=list)
     resolutionChecks: list[ResolutionCheck] = Field(default_factory=list)
     materialReviews: list[MaterialReviewDTO]
@@ -153,6 +179,7 @@ class ReviewStatus(StrEnum):
 
 
 class ReviewResponse(ReviewContract):
+    requirementAssessments: list[RequirementAssessment] = Field(default_factory=list)
     experienceRecommendations: list[ExperienceRecommendation] = Field(default_factory=list)
     resolutionChecks: list[ResolutionCheck] = Field(default_factory=list)
     status: ReviewStatus
@@ -186,6 +213,7 @@ class MaterialSummary(ReviewContract):
 
 
 class ContextAnalysis(ReviewContract):
+    requirements: list[ContextEvidence] = Field(default_factory=list)
     summary: str = Field(min_length=1)
     evidence: list[ContextEvidence]
     materialSummaries: list[MaterialSummary] = Field(default_factory=list)
@@ -220,6 +248,7 @@ class CompletedModules(ReviewContract):
 class ReviewRecord(ReviewContract):
     """JSON record shared by storage and retry; contains no runtime objects."""
 
+    policyVersion: str | None = None
     runId: str = Field(min_length=1)
     reviewContext: ReviewContext | None = None
     createdAt: AwareDatetime
@@ -242,7 +271,7 @@ class ReviewRecord(ReviewContract):
             sources = {item.sourceId for item in self.materials if item.materialType == kind}
             if bool(sources) != (module is not None):
                 raise ValueError("completed modules must match input materials")
-            if module and module.output and any(item.sourceId not in sources for item in module.output.evidence):
+            if module and module.output and any(item.sourceId not in sources for item in [*module.output.evidence, *module.output.requirements]):
                 raise ValueError("unknown analysis source")
             if module and module.output:
                 summary_ids = [item.sourceId for item in module.output.materialSummaries]
